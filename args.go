@@ -2,6 +2,7 @@ package command
 
 import (
 	"encoding"
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -12,11 +13,11 @@ type StringArgsFunc func(args ...string) error
 type StringMapArgsFunc func(args map[string]string) error
 
 type Args interface {
-	StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}) StringArgsFunc
-	StringMapArgsFunc(argsDefType reflect.Type, commandFunc interface{}) StringMapArgsFunc
+	StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}) (StringArgsFunc, error)
+	StringMapArgsFunc(argsDefType reflect.Type, commandFunc interface{}) (StringMapArgsFunc, error)
 }
 
-func GetStringArgsFunc(args Args, commandFunc interface{}) StringArgsFunc {
+func GetStringArgsFunc(args Args, commandFunc interface{}) (StringArgsFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -28,7 +29,7 @@ func GetStringArgsFunc(args Args, commandFunc interface{}) StringArgsFunc {
 	return args.StringArgsFunc(reflect.TypeOf(args), commandFunc)
 }
 
-func GetStringMapArgsFunc(args Args, commandFunc interface{}) StringMapArgsFunc {
+func GetStringMapArgsFunc(args Args, commandFunc interface{}) (StringMapArgsFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -63,34 +64,34 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 
 type ArgsDef struct{}
 
-func (*ArgsDef) StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}) StringArgsFunc {
+func (*ArgsDef) StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}) (StringArgsFunc, error) {
 	argsDefType = reflection.DerefType(argsDefType)
 
 	commandFuncVal := reflect.ValueOf(commandFunc)
 	commandFuncType := commandFuncVal.Type()
 	if commandFuncType.Kind() != reflect.Func {
-		panic("not a function")
+		return nil, errors.New("not a function") // TODO better error desc
 	}
 
 	returnsError := commandFuncType.NumOut() == 1 && commandFuncType.Out(0) == reflection.TypeOfError
 	returnsNothing := commandFuncType.NumOut() == 0
 	if !returnsError && !returnsNothing {
-		panic("not returning error")
+		return nil, errors.New("not returning error") // TODO better error desc
 	}
 
 	numArgs := commandFuncType.NumIn()
 
 	argTypes := reflection.FlatStructFieldNames(argsDefType, "cmd")
 	if len(argTypes) != numArgs {
-		panic("invalid arg num")
+		return nil, errors.New("invalid arg num") // TODO better error desc
 	}
 	for i := range argTypes {
 		if argTypes[i].Field.Type != commandFuncType.In(i) {
-			panic("arg types not the same")
+			return nil, errors.New("arg types not the same") // TODO better error desc
 		}
 	}
 
-	return func(stringArgs ...string) error {
+	f := func(stringArgs ...string) error {
 		numStringArgs := len(stringArgs)
 		argsDefVal := reflect.New(argsDefType).Elem()
 		argVals := make([]reflect.Value, numArgs)
@@ -111,36 +112,38 @@ func (*ArgsDef) StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}
 		}
 		return nil
 	}
+
+	return f, nil
 }
 
-func (*ArgsDef) StringMapArgsFunc(argsDefType reflect.Type, commandFunc interface{}) StringMapArgsFunc {
+func (*ArgsDef) StringMapArgsFunc(argsDefType reflect.Type, commandFunc interface{}) (StringMapArgsFunc, error) {
 	argsDefType = reflection.DerefType(argsDefType)
 
 	commandFuncVal := reflect.ValueOf(commandFunc)
 	commandFuncType := commandFuncVal.Type()
 	if commandFuncType.Kind() != reflect.Func {
-		panic("not a function")
+		return nil, errors.New("not a function") // TODO better error desc
 	}
 
 	returnsError := commandFuncType.NumOut() == 1 && commandFuncType.Out(0) == reflection.TypeOfError
 	returnsNothing := commandFuncType.NumOut() == 0
 	if !returnsError && !returnsNothing {
-		panic("not returning error")
+		return nil, errors.New("not returning error") // TODO better error desc
 	}
 
 	numArgs := commandFuncType.NumIn()
 
 	argTypes := reflection.FlatStructFieldNames(argsDefType, "cmd")
 	if len(argTypes) != numArgs {
-		panic("invalid arg num")
+		return nil, errors.New("invalid arg num") // TODO better error desc
 	}
 	for i := range argTypes {
 		if argTypes[i].Field.Type != commandFuncType.In(i) {
-			panic("arg types not the same")
+			return nil, errors.New("arg types not the same") // TODO better error desc
 		}
 	}
 
-	return func(args map[string]string) (err error) {
+	f := func(args map[string]string) (err error) {
 		argsDefVal := reflect.New(argsDefType).Elem()
 		argVals := make([]reflect.Value, numArgs)
 		for i := range argVals {
@@ -162,4 +165,6 @@ func (*ArgsDef) StringMapArgsFunc(argsDefType reflect.Type, commandFunc interfac
 		}
 		return nil
 	}
+
+	return f, nil
 }
