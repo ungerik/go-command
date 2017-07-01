@@ -26,7 +26,19 @@ func GetStringArgsFunc(args Args, commandFunc interface{}) (StringArgsFunc, erro
 	// because ArgsDef knows nothing about the outer embedding type.
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
+	// err := args.(argsDefInner).init(reflect.TypeOf(args), commandFunc)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return args.StringArgsFunc(reflect.TypeOf(args), commandFunc)
+}
+
+func MustGetStringArgsFunc(args Args, commandFunc interface{}) StringArgsFunc {
+	f, err := GetStringArgsFunc(args, commandFunc)
+	if err != nil {
+		panic(err)
+	}
+	return f
 }
 
 func GetStringMapArgsFunc(args Args, commandFunc interface{}) (StringMapArgsFunc, error) {
@@ -38,7 +50,19 @@ func GetStringMapArgsFunc(args Args, commandFunc interface{}) (StringMapArgsFunc
 	// because ArgsDef knows nothing about the outer embedding type.
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
+	// err := args.(argsDefInner).init(reflect.TypeOf(args), commandFunc)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return args.StringMapArgsFunc(reflect.TypeOf(args), commandFunc)
+}
+
+func MustGetStringMapArgsFunc(args Args, commandFunc interface{}) StringMapArgsFunc {
+	f, err := GetStringMapArgsFunc(args, commandFunc)
+	if err != nil {
+		panic(err)
+	}
+	return f
 }
 
 func assignString(destVal reflect.Value, sourceStr string) (err error) {
@@ -62,10 +86,27 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 	return err
 }
 
-type ArgsDef struct{}
+type argsDefInner interface {
+	init(argsDefType reflect.Type, commandFunc interface{}) error
+}
 
-func (*ArgsDef) StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}) (StringArgsFunc, error) {
-	argsDefType = reflection.DerefType(argsDefType)
+type ArgsDef struct {
+	outerType       reflect.Type
+	argStructFields []reflection.StructFieldName
+	initialized     bool
+}
+
+func (def *ArgsDef) init(argsDefOuterType reflect.Type) {
+	if def.initialized {
+		return
+	}
+	def.outerType = reflection.DerefType(argsDefOuterType)
+	def.argStructFields = reflection.FlatExportedStructFieldNames(def.outerType, "cmd")
+	def.initialized = true
+}
+
+func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringArgsFunc, error) {
+	def.init(argsDefOuterType)
 
 	commandFuncVal := reflect.ValueOf(commandFunc)
 	commandFuncType := commandFuncVal.Type()
@@ -79,24 +120,23 @@ func (*ArgsDef) StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}
 		return nil, errors.New("not returning error") // TODO better error desc
 	}
 
-	numArgs := commandFuncType.NumIn()
+	numArgs := len(def.argStructFields)
 
-	argTypes := reflection.FlatStructFieldNames(argsDefType, "cmd")
-	if len(argTypes) != numArgs {
+	if numArgs != commandFuncType.NumIn() {
 		return nil, errors.New("invalid arg num") // TODO better error desc
 	}
-	for i := range argTypes {
-		if argTypes[i].Field.Type != commandFuncType.In(i) {
+	for i := range def.argStructFields {
+		if def.argStructFields[i].Field.Type != commandFuncType.In(i) {
 			return nil, errors.New("arg types not the same") // TODO better error desc
 		}
 	}
 
 	f := func(stringArgs ...string) error {
 		numStringArgs := len(stringArgs)
-		argsDefVal := reflect.New(argsDefType).Elem()
+		newStruct := reflect.New(def.outerType).Elem()
 		argVals := make([]reflect.Value, numArgs)
 		for i := range argVals {
-			argVals[i] = argsDefVal.FieldByIndex(argTypes[i].Field.Index)
+			argVals[i] = newStruct.FieldByIndex(def.argStructFields[i].Field.Index)
 			if i >= numStringArgs {
 				continue
 			}
@@ -116,8 +156,8 @@ func (*ArgsDef) StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}
 	return f, nil
 }
 
-func (*ArgsDef) StringMapArgsFunc(argsDefType reflect.Type, commandFunc interface{}) (StringMapArgsFunc, error) {
-	argsDefType = reflection.DerefType(argsDefType)
+func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringMapArgsFunc, error) {
+	def.init(argsDefOuterType)
 
 	commandFuncVal := reflect.ValueOf(commandFunc)
 	commandFuncType := commandFuncVal.Type()
@@ -131,24 +171,23 @@ func (*ArgsDef) StringMapArgsFunc(argsDefType reflect.Type, commandFunc interfac
 		return nil, errors.New("not returning error") // TODO better error desc
 	}
 
-	numArgs := commandFuncType.NumIn()
+	numArgs := len(def.argStructFields)
 
-	argTypes := reflection.FlatStructFieldNames(argsDefType, "cmd")
-	if len(argTypes) != numArgs {
+	if numArgs != commandFuncType.NumIn() {
 		return nil, errors.New("invalid arg num") // TODO better error desc
 	}
-	for i := range argTypes {
-		if argTypes[i].Field.Type != commandFuncType.In(i) {
+	for i := range def.argStructFields {
+		if def.argStructFields[i].Field.Type != commandFuncType.In(i) {
 			return nil, errors.New("arg types not the same") // TODO better error desc
 		}
 	}
 
 	f := func(args map[string]string) (err error) {
-		argsDefVal := reflect.New(argsDefType).Elem()
+		newStruct := reflect.New(def.outerType).Elem()
 		argVals := make([]reflect.Value, numArgs)
 		for i := range argVals {
-			argVals[i] = argsDefVal.FieldByIndex(argTypes[i].Field.Index)
-			name := argTypes[i].Name
+			argVals[i] = newStruct.FieldByIndex(def.argStructFields[i].Field.Index)
+			name := def.argStructFields[i].Name
 			stringArg, hasArg := args[name]
 			if !hasArg {
 				continue
