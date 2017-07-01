@@ -1,6 +1,7 @@
 package command
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,8 +28,8 @@ func CommandFuncErr(int0 int, str1 string, bool2 bool) error {
 }
 
 func Test_ArgsDef(t *testing.T) {
-	commandArgsDef := new(TestCommandArgsDef)
-	stringCommandFunc := commandArgsDef.StringArgsFunc(commandArgsDef, CommandFunc)
+	var commandArgsDef TestCommandArgsDef
+	stringCommandFunc := commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc)
 	passedArgs = nil
 	err := stringCommandFunc("123", "Hello World!", "true")
 	assert.NoError(t, err, "command should return nil")
@@ -36,8 +37,7 @@ func Test_ArgsDef(t *testing.T) {
 	assert.Equal(t, "Hello World!", passedArgs.Str1, "str1")
 	assert.Equal(t, true, passedArgs.Bool2, "bool2")
 
-	commandArgsDef = new(TestCommandArgsDef)
-	stringCommandFunc = commandArgsDef.StringArgsFunc(commandArgsDef, CommandFunc)
+	stringCommandFunc = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc)
 	passedArgs = nil
 	err = stringCommandFunc("123")
 	assert.NoError(t, err, "command should return nil")
@@ -45,18 +45,33 @@ func Test_ArgsDef(t *testing.T) {
 	assert.Equal(t, "", passedArgs.Str1, "str1")
 	assert.Equal(t, false, passedArgs.Bool2, "bool2")
 
-	commandArgsDef = new(TestCommandArgsDef)
-	stringCommandFunc = commandArgsDef.StringArgsFunc(commandArgsDef, CommandFuncErr)
+	stringCommandFunc = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFuncErr)
 	passedArgs = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
 	assert.Error(t, err, "command should return an error")
 }
 
 func Test_GetStringArgsFunc(t *testing.T) {
-	commandArgsDef := new(TestCommandArgsDef)
-	stringCommandFunc := GetStringArgsFunc(commandArgsDef, CommandFunc)
+	var commandArgsDef TestCommandArgsDef
+	stringCommandFunc := GetStringArgsFunc(&commandArgsDef, CommandFunc)
 	passedArgs = nil
 	err := stringCommandFunc("123", "Hello World!", "true")
+	assert.NoError(t, err, "command should return nil")
+	assert.Equal(t, 123, passedArgs.Int0, "int0")
+	assert.Equal(t, "Hello World!", passedArgs.Str1, "str1")
+	assert.Equal(t, true, passedArgs.Bool2, "bool2")
+}
+
+func Test_GetStringMapArgsFunc(t *testing.T) {
+	var commandArgsDef TestCommandArgsDef
+	stringCommandFunc := GetStringMapArgsFunc(&commandArgsDef, CommandFunc)
+	argsMap := map[string]string{
+		"int0":  "123",
+		"str1":  "Hello World!",
+		"bool2": "true",
+	}
+	passedArgs = nil
+	err := stringCommandFunc(argsMap)
 	assert.NoError(t, err, "command should return nil")
 	assert.Equal(t, 123, passedArgs.Int0, "int0")
 	assert.Equal(t, "Hello World!", passedArgs.Str1, "str1")
