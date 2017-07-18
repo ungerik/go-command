@@ -8,8 +8,8 @@ const Default = ""
 
 type StringArgsDispatcher map[string]StringArgsFunc
 
-func (disp StringArgsDispatcher) AddCommand(command string, args Args, commandFunc interface{}) error {
-	stringArgsFunc, err := GetStringArgsFunc(args, commandFunc)
+func (disp StringArgsDispatcher) AddCommand(command string, args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) error {
+	stringArgsFunc, err := GetStringArgsFunc(args, commandFunc, resultHandlers...)
 	if err != nil {
 		return err
 	}
@@ -17,15 +17,15 @@ func (disp StringArgsDispatcher) AddCommand(command string, args Args, commandFu
 	return nil
 }
 
-func (disp StringArgsDispatcher) MustAddCommand(command string, args Args, commandFunc interface{}) {
-	err := disp.AddCommand(command, args, commandFunc)
+func (disp StringArgsDispatcher) MustAddCommand(command string, args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) {
+	err := disp.AddCommand(command, args, commandFunc, resultHandlers...)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (disp StringArgsDispatcher) AddDefaultCommand(args Args, commandFunc interface{}) error {
-	stringArgsFunc, err := GetStringArgsFunc(args, commandFunc)
+func (disp StringArgsDispatcher) AddDefaultCommand(args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) error {
+	stringArgsFunc, err := GetStringArgsFunc(args, commandFunc, resultHandlers...)
 	if err != nil {
 		return err
 	}
@@ -33,8 +33,8 @@ func (disp StringArgsDispatcher) AddDefaultCommand(args Args, commandFunc interf
 	return nil
 }
 
-func (disp StringArgsDispatcher) MustAddDefaultCommand(args Args, commandFunc interface{}) {
-	err := disp.AddDefaultCommand(args, commandFunc)
+func (disp StringArgsDispatcher) MustAddDefaultCommand(args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) {
+	err := disp.AddDefaultCommand(args, commandFunc, resultHandlers...)
 	if err != nil {
 		panic(err)
 	}

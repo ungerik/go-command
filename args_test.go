@@ -29,7 +29,7 @@ func CommandFuncErr(int0 int, str1 string, bool2 bool) error {
 
 func Test_ArgsDef(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
-	stringCommandFunc, err := commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc)
+	stringCommandFunc, err := commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc, nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
 	passedArgs = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
@@ -38,7 +38,7 @@ func Test_ArgsDef(t *testing.T) {
 	assert.Equal(t, "Hello World!", passedArgs.Str1, "str1")
 	assert.Equal(t, true, passedArgs.Bool2, "bool2")
 
-	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc)
+	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc, nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
 	passedArgs = nil
 	err = stringCommandFunc("123")
@@ -47,7 +47,7 @@ func Test_ArgsDef(t *testing.T) {
 	assert.Equal(t, "", passedArgs.Str1, "str1")
 	assert.Equal(t, false, passedArgs.Bool2, "bool2")
 
-	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFuncErr)
+	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFuncErr, nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
 	passedArgs = nil
 	err = stringCommandFunc("123", "Hello World!", "true")

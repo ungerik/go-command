@@ -11,13 +11,14 @@ import (
 
 type StringArgsFunc func(args ...string) error
 type StringMapArgsFunc func(args map[string]string) error
+type ResultHandlerFunc func(result reflect.Value) error
 
 type Args interface {
-	StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}) (StringArgsFunc, error)
-	StringMapArgsFunc(argsDefType reflect.Type, commandFunc interface{}) (StringMapArgsFunc, error)
+	StringArgsFunc(argsDefType reflect.Type, commandFunc interface{}, resultHandlers []ResultHandlerFunc) (StringArgsFunc, error)
+	StringMapArgsFunc(argsDefType reflect.Type, commandFunc interface{}, resultHandlers []ResultHandlerFunc) (StringMapArgsFunc, error)
 }
 
-func GetStringArgsFunc(args Args, commandFunc interface{}) (StringArgsFunc, error) {
+func GetStringArgsFunc(args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) (StringArgsFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -30,18 +31,18 @@ func GetStringArgsFunc(args Args, commandFunc interface{}) (StringArgsFunc, erro
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return args.StringArgsFunc(reflect.TypeOf(args), commandFunc)
+	return args.StringArgsFunc(reflect.TypeOf(args), commandFunc, resultHandlers)
 }
 
-func MustGetStringArgsFunc(args Args, commandFunc interface{}) StringArgsFunc {
-	f, err := GetStringArgsFunc(args, commandFunc)
+func MustGetStringArgsFunc(args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) StringArgsFunc {
+	f, err := GetStringArgsFunc(args, commandFunc, resultHandlers...)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetStringMapArgsFunc(args Args, commandFunc interface{}) (StringMapArgsFunc, error) {
+func GetStringMapArgsFunc(args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) (StringMapArgsFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -54,11 +55,11 @@ func GetStringMapArgsFunc(args Args, commandFunc interface{}) (StringMapArgsFunc
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return args.StringMapArgsFunc(reflect.TypeOf(args), commandFunc)
+	return args.StringMapArgsFunc(reflect.TypeOf(args), commandFunc, resultHandlers)
 }
 
-func MustGetStringMapArgsFunc(args Args, commandFunc interface{}) StringMapArgsFunc {
-	f, err := GetStringMapArgsFunc(args, commandFunc)
+func MustGetStringMapArgsFunc(args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) StringMapArgsFunc {
+	f, err := GetStringMapArgsFunc(args, commandFunc, resultHandlers...)
 	if err != nil {
 		panic(err)
 	}
@@ -105,38 +106,51 @@ func (def *ArgsDef) init(argsDefOuterType reflect.Type) {
 	def.initialized = true
 }
 
-func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringArgsFunc, error) {
-	def.init(argsDefOuterType)
-
-	commandFuncVal := reflect.ValueOf(commandFunc)
+func (def *ArgsDef) checkFunctionSignature(commandFuncVal reflect.Value, resultHandlers []ResultHandlerFunc) (numArgs int, returnsError bool, err error) {
 	commandFuncType := commandFuncVal.Type()
 	if commandFuncType.Kind() != reflect.Func {
-		return nil, errors.New("not a function") // TODO better error desc
+		return 0, false, errors.New("not a function") // TODO better error desc
 	}
 
-	returnsError := commandFuncType.NumOut() == 1 && commandFuncType.Out(0) == reflection.TypeOfError
+	returnsError = commandFuncType.NumOut() == 1 && commandFuncType.Out(0) == reflection.TypeOfError
 	returnsNothing := commandFuncType.NumOut() == 0
 	if !returnsError && !returnsNothing {
-		return nil, errors.New("not returning error") // TODO better error desc
+		return 0, false, errors.New("not returning error") // TODO better error desc
 	}
 
-	numArgs := len(def.argStructFields)
+	numArgs = len(def.argStructFields)
 
 	if numArgs != commandFuncType.NumIn() {
-		return nil, errors.New("invalid arg num") // TODO better error desc
+		return 0, false, errors.New("invalid arg num") // TODO better error desc
 	}
 	for i := range def.argStructFields {
 		if def.argStructFields[i].Field.Type != commandFuncType.In(i) {
-			return nil, errors.New("arg types not the same") // TODO better error desc
+			return 0, false, errors.New("arg types not the same") // TODO better error desc
 		}
 	}
 
-	f := func(stringArgs ...string) error {
+	return numArgs, returnsError, nil
+}
+
+func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultHandlers []ResultHandlerFunc) (StringArgsFunc, error) {
+	def.init(argsDefOuterType)
+
+	commandFuncVal := reflect.ValueOf(commandFunc)
+
+	numArgs, returnsError, err := def.checkFunctionSignature(commandFuncVal, resultHandlers)
+	if err != nil {
+		return nil, err
+	}
+
+	stringArgsFunc := func(stringArgs ...string) error {
 		numStringArgs := len(stringArgs)
-		newStruct := reflect.New(def.outerType).Elem()
+		// Allocate a new args struct because we need addressable
+		// variables of struct field types to hold arg values.
+		// Instead of new individual variable use fields of args struct.
+		argsStruct := reflect.New(def.outerType).Elem()
 		argVals := make([]reflect.Value, numArgs)
 		for i := range argVals {
-			argVals[i] = newStruct.FieldByIndex(def.argStructFields[i].Field.Index)
+			argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
 			if i >= numStringArgs {
 				continue
 			}
@@ -153,40 +167,27 @@ func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc in
 		return nil
 	}
 
-	return f, nil
+	return stringArgsFunc, nil
 }
 
-func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringMapArgsFunc, error) {
+func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultHandlers []ResultHandlerFunc) (StringMapArgsFunc, error) {
 	def.init(argsDefOuterType)
 
 	commandFuncVal := reflect.ValueOf(commandFunc)
-	commandFuncType := commandFuncVal.Type()
-	if commandFuncType.Kind() != reflect.Func {
-		return nil, errors.New("not a function") // TODO better error desc
+
+	numArgs, returnsError, err := def.checkFunctionSignature(commandFuncVal, resultHandlers)
+	if err != nil {
+		return nil, err
 	}
 
-	returnsError := commandFuncType.NumOut() == 1 && commandFuncType.Out(0) == reflection.TypeOfError
-	returnsNothing := commandFuncType.NumOut() == 0
-	if !returnsError && !returnsNothing {
-		return nil, errors.New("not returning error") // TODO better error desc
-	}
-
-	numArgs := len(def.argStructFields)
-
-	if numArgs != commandFuncType.NumIn() {
-		return nil, errors.New("invalid arg num") // TODO better error desc
-	}
-	for i := range def.argStructFields {
-		if def.argStructFields[i].Field.Type != commandFuncType.In(i) {
-			return nil, errors.New("arg types not the same") // TODO better error desc
-		}
-	}
-
-	f := func(args map[string]string) (err error) {
-		newStruct := reflect.New(def.outerType).Elem()
+	stringMapArgsFunc := func(args map[string]string) (err error) {
+		// Allocate a new args struct because we need addressable
+		// variables of struct field types to hold arg values.
+		// Instead of new individual variable use fields of args struct.
+		argsStruct := reflect.New(def.outerType).Elem()
 		argVals := make([]reflect.Value, numArgs)
 		for i := range argVals {
-			argVals[i] = newStruct.FieldByIndex(def.argStructFields[i].Field.Index)
+			argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
 			name := def.argStructFields[i].Name
 			stringArg, hasArg := args[name]
 			if !hasArg {
@@ -205,5 +206,5 @@ func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc
 		return nil
 	}
 
-	return f, nil
+	return stringMapArgsFunc, nil
 }
