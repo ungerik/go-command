@@ -8,8 +8,8 @@ const Default = ""
 
 type StringArgsDispatcher map[string]StringArgsFunc
 
-func (disp StringArgsDispatcher) AddCommand(command string, args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) error {
-	stringArgsFunc, err := GetStringArgsFunc(args, commandFunc, resultHandlers...)
+func (disp StringArgsDispatcher) AddCommand(command string, args Args, commandFunc interface{}, resultsHandler ResultsHandler) error {
+	stringArgsFunc, err := GetStringArgsFunc(args, commandFunc, resultsHandler)
 	if err != nil {
 		return err
 	}
@@ -17,15 +17,15 @@ func (disp StringArgsDispatcher) AddCommand(command string, args Args, commandFu
 	return nil
 }
 
-func (disp StringArgsDispatcher) MustAddCommand(command string, args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) {
-	err := disp.AddCommand(command, args, commandFunc, resultHandlers...)
+func (disp StringArgsDispatcher) MustAddCommand(command string, args Args, commandFunc interface{}, resultsHandler ResultsHandler) {
+	err := disp.AddCommand(command, args, commandFunc, resultsHandler)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (disp StringArgsDispatcher) AddDefaultCommand(args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) error {
-	stringArgsFunc, err := GetStringArgsFunc(args, commandFunc, resultHandlers...)
+func (disp StringArgsDispatcher) AddDefaultCommand(args Args, commandFunc interface{}, resultsHandler ResultsHandler) error {
+	stringArgsFunc, err := GetStringArgsFunc(args, commandFunc, resultsHandler)
 	if err != nil {
 		return err
 	}
@@ -33,8 +33,8 @@ func (disp StringArgsDispatcher) AddDefaultCommand(args Args, commandFunc interf
 	return nil
 }
 
-func (disp StringArgsDispatcher) MustAddDefaultCommand(args Args, commandFunc interface{}, resultHandlers ...ResultHandlerFunc) {
-	err := disp.AddDefaultCommand(args, commandFunc, resultHandlers...)
+func (disp StringArgsDispatcher) MustAddDefaultCommand(args Args, commandFunc interface{}, resultsHandler ResultsHandler) {
+	err := disp.AddDefaultCommand(args, commandFunc, resultsHandler)
 	if err != nil {
 		panic(err)
 	}
