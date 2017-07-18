@@ -1,6 +1,8 @@
 package command
 
 import (
+	"bytes"
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -14,16 +16,16 @@ type TestCommandArgsDef struct {
 	Bool2 bool   `cmd:"bool2"`
 }
 
-var passedArgs *TestCommandArgsDef
+var passedArgsCollector *TestCommandArgsDef
 
 func CommandFunc(int0 int, str1 string, bool2 bool) error {
 	// fmt.Println(int0, str1, bool2)
-	passedArgs = &TestCommandArgsDef{Int0: int0, Str1: str1, Bool2: bool2}
+	passedArgsCollector = &TestCommandArgsDef{Int0: int0, Str1: str1, Bool2: bool2}
 	return nil
 }
 
-func CommandFuncErr(int0 int, str1 string, bool2 bool) error {
-	passedArgs = &TestCommandArgsDef{Int0: int0, Str1: str1, Bool2: bool2}
+func CommandFuncErrResult(int0 int, str1 string, bool2 bool) error {
+	passedArgsCollector = &TestCommandArgsDef{Int0: int0, Str1: str1, Bool2: bool2}
 	return assert.AnError
 }
 
@@ -31,25 +33,25 @@ func Test_ArgsDef(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
 	stringCommandFunc, err := commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc, nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
-	passedArgs = nil
+	passedArgsCollector = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
 	assert.NoError(t, err, "command should return nil")
-	assert.Equal(t, 123, passedArgs.Int0, "int0")
-	assert.Equal(t, "Hello World!", passedArgs.Str1, "str1")
-	assert.Equal(t, true, passedArgs.Bool2, "bool2")
+	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
+	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
+	assert.Equal(t, true, passedArgsCollector.Bool2, "bool2")
 
 	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc, nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
-	passedArgs = nil
+	passedArgsCollector = nil
 	err = stringCommandFunc("123")
 	assert.NoError(t, err, "command should return nil")
-	assert.Equal(t, 123, passedArgs.Int0, "int0")
-	assert.Equal(t, "", passedArgs.Str1, "str1")
-	assert.Equal(t, false, passedArgs.Bool2, "bool2")
+	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
+	assert.Equal(t, "", passedArgsCollector.Str1, "str1")
+	assert.Equal(t, false, passedArgsCollector.Bool2, "bool2")
 
-	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFuncErr, nil)
+	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFuncErrResult, nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
-	passedArgs = nil
+	passedArgsCollector = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
 	assert.Error(t, err, "command should return an error")
 }
@@ -58,12 +60,12 @@ func Test_GetStringArgsFunc(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
 	stringCommandFunc, err := GetStringArgsFunc(&commandArgsDef, CommandFunc)
 	assert.NoError(t, err, "GetStringArgsFunc")
-	passedArgs = nil
+	passedArgsCollector = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
 	assert.NoError(t, err, "command should return nil")
-	assert.Equal(t, 123, passedArgs.Int0, "int0")
-	assert.Equal(t, "Hello World!", passedArgs.Str1, "str1")
-	assert.Equal(t, true, passedArgs.Bool2, "bool2")
+	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
+	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
+	assert.Equal(t, true, passedArgsCollector.Bool2, "bool2")
 }
 
 func Test_GetStringMapArgsFunc(t *testing.T) {
@@ -75,10 +77,43 @@ func Test_GetStringMapArgsFunc(t *testing.T) {
 		"str1":  "Hello World!",
 		"bool2": "true",
 	}
-	passedArgs = nil
+	passedArgsCollector = nil
 	err = stringCommandFunc(argsMap)
 	assert.NoError(t, err, "command should return nil")
-	assert.Equal(t, 123, passedArgs.Int0, "int0")
-	assert.Equal(t, "Hello World!", passedArgs.Str1, "str1")
-	assert.Equal(t, true, passedArgs.Bool2, "bool2")
+	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
+	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
+	assert.Equal(t, true, passedArgsCollector.Bool2, "bool2")
+}
+
+type ResultStruct struct {
+	ResultCode    int
+	ResultMessage string
+}
+
+var (
+	defaultResultStruct        = ResultStruct{404, "not found"}
+	defaultResultStructJSON, _ = json.MarshalIndent(&defaultResultStruct, "", "  ")
+)
+
+func CommandFuncStructResult(int0 int, str1 string, bool2 bool) (*ResultStruct, error) {
+	passedArgsCollector = &TestCommandArgsDef{Int0: int0, Str1: str1, Bool2: bool2}
+	return &defaultResultStruct, nil
+}
+
+func Test_WithResultHandler(t *testing.T) {
+	var commandArgsDef TestCommandArgsDef
+	var resultBuf bytes.Buffer
+	stringCommandFunc, err := GetStringArgsFunc(&commandArgsDef, CommandFuncStructResult, PrintTo(&resultBuf))
+	assert.NoError(t, err, "GetStringArgsFunc")
+
+	passedArgsCollector = nil
+	err = stringCommandFunc("123", "Hello World!", "true")
+
+	// Check passed args
+	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
+	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
+	assert.Equal(t, true, passedArgsCollector.Bool2, "bool2")
+
+	// Check result struct
+	assert.Equal(t, resultBuf.String(), string(defaultResultStructJSON), "equal result JSON")
 }

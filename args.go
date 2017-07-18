@@ -2,10 +2,10 @@ package command
 
 import (
 	"encoding"
-	"errors"
 	"fmt"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/ungerik/go-reflection"
 )
 
@@ -87,9 +87,9 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 	return err
 }
 
-type argsDefInner interface {
-	init(argsDefType reflect.Type, commandFunc interface{}) error
-}
+// type argsDefInner interface {
+// 	init(argsDefType reflect.Type, commandFunc interface{}) error
+// }
 
 type ArgsDef struct {
 	outerType       reflect.Type
@@ -106,30 +106,47 @@ func (def *ArgsDef) init(argsDefOuterType reflect.Type) {
 	def.initialized = true
 }
 
-func (def *ArgsDef) checkFunctionSignature(commandFuncVal reflect.Value, resultHandlers []ResultHandlerFunc) (numArgs int, returnsError bool, err error) {
+func (def *ArgsDef) checkFunctionSignature(commandFuncVal reflect.Value, resultHandlers []ResultHandlerFunc) (numArgs, errorIndex int, err error) {
 	commandFuncType := commandFuncVal.Type()
 	if commandFuncType.Kind() != reflect.Func {
-		return 0, false, errors.New("not a function") // TODO better error desc
+		return -1, -1, errors.Errorf("expected a function, but got %s", commandFuncType)
 	}
 
-	returnsError = commandFuncType.NumOut() == 1 && commandFuncType.Out(0) == reflection.TypeOfError
-	returnsNothing := commandFuncType.NumOut() == 0
-	if !returnsError && !returnsNothing {
-		return 0, false, errors.New("not returning error") // TODO better error desc
+	numResults := commandFuncType.NumOut()
+	switch numResults {
+	case len(resultHandlers):
+		// No error index in results
+		errorIndex = -1
+
+	case len(resultHandlers) + 1:
+		// Last result is error
+		errorIndex = numResults - 1
+		if commandFuncType.Out(errorIndex) != reflection.TypeOfError {
+			return -1, -1, errors.Errorf("expected error type as last result (index %d), but is %s", errorIndex, commandFuncType.Out(errorIndex))
+		}
+
+	default:
+		return -1, -1, errors.Errorf("expected %d or %d results, but function has %d", len(resultHandlers), len(resultHandlers)+1, numResults)
 	}
 
 	numArgs = len(def.argStructFields)
 
 	if numArgs != commandFuncType.NumIn() {
-		return 0, false, errors.New("invalid arg num") // TODO better error desc
+		return -1, -1, errors.Errorf("number of fields in command.Args struct (%d) does not match number of function arguments (%d)", numArgs, commandFuncType.NumIn())
 	}
 	for i := range def.argStructFields {
 		if def.argStructFields[i].Field.Type != commandFuncType.In(i) {
-			return 0, false, errors.New("arg types not the same") // TODO better error desc
+			return -1, -1, errors.Errorf(
+				"type of command.Args struct field '%s' is %s, which does not match function argument %d type %s",
+				def.argStructFields[i].Field.Name,
+				def.argStructFields[i].Field.Type,
+				i,
+				commandFuncType.In(i),
+			)
 		}
 	}
 
-	return numArgs, returnsError, nil
+	return numArgs, errorIndex, nil
 }
 
 func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultHandlers []ResultHandlerFunc) (StringArgsFunc, error) {
@@ -137,7 +154,7 @@ func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc in
 
 	commandFuncVal := reflect.ValueOf(commandFunc)
 
-	numArgs, returnsError, err := def.checkFunctionSignature(commandFuncVal, resultHandlers)
+	numArgs, errorIndex, err := def.checkFunctionSignature(commandFuncVal, resultHandlers)
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +178,13 @@ func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc in
 		}
 
 		resultVals := commandFuncVal.Call(argVals)
-		if returnsError && resultVals[0].Interface() != nil {
+		for i := range resultHandlers {
+			err = resultHandlers[i](resultVals[i])
+			if err != nil {
+				return err
+			}
+		}
+		if errorIndex != -1 && resultVals[errorIndex].Interface() != nil {
 			return resultVals[0].Interface().(error)
 		}
 		return nil
@@ -175,7 +198,7 @@ func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc
 
 	commandFuncVal := reflect.ValueOf(commandFunc)
 
-	numArgs, returnsError, err := def.checkFunctionSignature(commandFuncVal, resultHandlers)
+	numArgs, errorIndex, err := def.checkFunctionSignature(commandFuncVal, resultHandlers)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +223,13 @@ func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc
 		}
 
 		resultVals := commandFuncVal.Call(argVals)
-		if returnsError && resultVals[0].Interface() != nil {
+		for i := range resultHandlers {
+			err = resultHandlers[i](resultVals[i])
+			if err != nil {
+				return err
+			}
+		}
+		if errorIndex != -1 && resultVals[errorIndex].Interface() != nil {
 			return resultVals[0].Interface().(error)
 		}
 		return nil

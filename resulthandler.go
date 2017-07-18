@@ -11,14 +11,33 @@ import (
 )
 
 func PrintTo(writer io.Writer) ResultHandlerFunc {
-	return func(result reflect.Value) error {
+	return func(result reflect.Value) (err error) {
 		switch reflection.DerefValue(result).Kind() {
 		case reflect.Struct, reflect.Slice, reflect.Array:
-			enc := json.NewEncoder(writer)
-			enc.SetIndent("", "  ")
-			return enc.Encode(result.Interface())
+			b, err := json.MarshalIndent(result.Interface(), "", "  ")
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprint(writer, string(b))
+		default:
+			_, err = fmt.Fprint(writer, result.Interface())
 		}
-		_, err := fmt.Fprintln(writer, result.Interface())
+		return err
+	}
+}
+
+func PrintlnTo(writer io.Writer) ResultHandlerFunc {
+	return func(result reflect.Value) (err error) {
+		switch reflection.DerefValue(result).Kind() {
+		case reflect.Struct, reflect.Slice, reflect.Array:
+			b, err := json.MarshalIndent(result.Interface(), "", "  ")
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintln(writer, string(b))
+		default:
+			_, err = fmt.Fprintln(writer, result.Interface())
+		}
 		return err
 	}
 }
