@@ -31,7 +31,7 @@ func CommandFuncErrResult(int0 int, str1 string, bool2 bool) error {
 
 func Test_ArgsDef(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
-	stringCommandFunc, err := commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc, nil)
+	stringCommandFunc, err := commandArgsDef.StringArgsFunc(CommandFunc, reflect.TypeOf(commandArgsDef), nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
 	passedArgsCollector = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
@@ -40,7 +40,7 @@ func Test_ArgsDef(t *testing.T) {
 	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
 	assert.Equal(t, true, passedArgsCollector.Bool2, "bool2")
 
-	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFunc, nil)
+	stringCommandFunc, err = commandArgsDef.StringArgsFunc(CommandFunc, reflect.TypeOf(commandArgsDef), nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
 	passedArgsCollector = nil
 	err = stringCommandFunc("123")
@@ -49,7 +49,7 @@ func Test_ArgsDef(t *testing.T) {
 	assert.Equal(t, "", passedArgsCollector.Str1, "str1")
 	assert.Equal(t, false, passedArgsCollector.Bool2, "bool2")
 
-	stringCommandFunc, err = commandArgsDef.StringArgsFunc(reflect.TypeOf(commandArgsDef), CommandFuncErrResult, nil)
+	stringCommandFunc, err = commandArgsDef.StringArgsFunc(CommandFuncErrResult, reflect.TypeOf(commandArgsDef), nil)
 	assert.NoError(t, err, "Args.StringArgsFunc")
 	passedArgsCollector = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
@@ -58,7 +58,7 @@ func Test_ArgsDef(t *testing.T) {
 
 func Test_GetStringArgsFunc(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
-	stringCommandFunc, err := GetStringArgsFunc(&commandArgsDef, CommandFunc)
+	stringCommandFunc, err := GetStringArgsFunc(CommandFunc, &commandArgsDef)
 	assert.NoError(t, err, "GetStringArgsFunc")
 	passedArgsCollector = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
@@ -70,7 +70,7 @@ func Test_GetStringArgsFunc(t *testing.T) {
 
 func Test_GetStringMapArgsFunc(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
-	stringCommandFunc, err := GetStringMapArgsFunc(&commandArgsDef, CommandFunc)
+	stringCommandFunc, err := GetStringMapArgsFunc(CommandFunc, &commandArgsDef)
 	assert.NoError(t, err, "GetStringMapArgsFunc")
 	argsMap := map[string]string{
 		"int0":  "123",
@@ -103,7 +103,7 @@ func CommandFuncStructResult(int0 int, str1 string, bool2 bool) (*ResultStruct, 
 func Test_WithResultHandler(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
 	var resultBuf bytes.Buffer
-	stringCommandFunc, err := GetStringArgsFunc(&commandArgsDef, CommandFuncStructResult, PrintTo(&resultBuf))
+	stringCommandFunc, err := GetStringArgsFunc(CommandFuncStructResult, &commandArgsDef, PrintTo(&resultBuf))
 	assert.NoError(t, err, "GetStringArgsFunc")
 
 	passedArgsCollector = nil

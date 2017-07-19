@@ -22,8 +22,8 @@ func handleErr(err error, writer http.ResponseWriter, request *http.Request, err
 	}
 }
 
-func CommandHandler(args command.Args, commandFunc interface{}, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
-	f := command.MustGetStringMapArgsResultValuesFunc(args, commandFunc)
+func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
+	f := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {

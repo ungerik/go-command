@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bytes"
 	"encoding"
 	"fmt"
 	"reflect"
@@ -16,13 +17,13 @@ type StringArgsResultValuesFunc func(args []string) ([]reflect.Value, error)
 type StringMapArgsResultValuesFunc func(args map[string]string) ([]reflect.Value, error)
 
 type Args interface {
-	StringArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultsHandlers []ResultsHandler) (StringArgsFunc, error)
-	StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error)
-	StringArgsResultValuesFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringArgsResultValuesFunc, error)
-	StringMapArgsResultValuesFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringMapArgsResultValuesFunc, error)
+	StringArgsFunc(commandFunc interface{}, argsDefOuterType reflect.Type, resultsHandlers []ResultsHandler) (StringArgsFunc, error)
+	StringMapArgsFunc(commandFunc interface{}, argsDefOuterType reflect.Type, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error)
+	StringArgsResultValuesFunc(commandFunc interface{}, argsDefOuterType reflect.Type) (StringArgsResultValuesFunc, error)
+	StringMapArgsResultValuesFunc(commandFunc interface{}, argsDefOuterType reflect.Type) (StringMapArgsResultValuesFunc, error)
 }
 
-func GetStringArgsFunc(args Args, commandFunc interface{}, resultsHandlers ...ResultsHandler) (StringArgsFunc, error) {
+func GetStringArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) (StringArgsFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -31,22 +32,22 @@ func GetStringArgsFunc(args Args, commandFunc interface{}, resultsHandlers ...Re
 	// because ArgsDef knows nothing about the outer embedding type.
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
-	// err := args.(argsDefInner).init(reflect.TypeOf(args), commandFunc)
+	// err := args.(argsDefInner).init(commandFunc, reflect.TypeOf(args))
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return args.StringArgsFunc(reflect.TypeOf(args), commandFunc, resultsHandlers)
+	return args.StringArgsFunc(commandFunc, reflect.TypeOf(args), resultsHandlers)
 }
 
-func MustGetStringArgsFunc(args Args, commandFunc interface{}, resultsHandlers ...ResultsHandler) StringArgsFunc {
-	f, err := GetStringArgsFunc(args, commandFunc, resultsHandlers...)
+func MustGetStringArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) StringArgsFunc {
+	f, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetStringMapArgsFunc(args Args, commandFunc interface{}, resultsHandlers ...ResultsHandler) (StringMapArgsFunc, error) {
+func GetStringMapArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) (StringMapArgsFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -55,22 +56,22 @@ func GetStringMapArgsFunc(args Args, commandFunc interface{}, resultsHandlers ..
 	// because ArgsDef knows nothing about the outer embedding type.
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
-	// err := args.(argsDefInner).init(reflect.TypeOf(args), commandFunc)
+	// err := args.(argsDefInner).init(commandFunc, reflect.TypeOf(args))
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return args.StringMapArgsFunc(reflect.TypeOf(args), commandFunc, resultsHandlers)
+	return args.StringMapArgsFunc(commandFunc, reflect.TypeOf(args), resultsHandlers)
 }
 
-func MustGetStringMapArgsFunc(args Args, commandFunc interface{}, resultsHandlers ...ResultsHandler) StringMapArgsFunc {
-	f, err := GetStringMapArgsFunc(args, commandFunc, resultsHandlers...)
+func MustGetStringMapArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) StringMapArgsFunc {
+	f, err := GetStringMapArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetStringArgsResultValuesFunc(args Args, commandFunc interface{}) (StringArgsResultValuesFunc, error) {
+func GetStringArgsResultValuesFunc(commandFunc interface{}, args Args) (StringArgsResultValuesFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -79,22 +80,22 @@ func GetStringArgsResultValuesFunc(args Args, commandFunc interface{}) (StringAr
 	// because ArgsDef knows nothing about the outer embedding type.
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
-	// err := args.(argsDefInner).init(reflect.TypeOf(args), commandFunc)
+	// err := args.(argsDefInner).init(commandFunc, reflect.TypeOf(args))
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return args.StringArgsResultValuesFunc(reflect.TypeOf(args), commandFunc)
+	return args.StringArgsResultValuesFunc(commandFunc, reflect.TypeOf(args))
 }
 
-func MustGetStringArgsResultValuesFunc(args Args, commandFunc interface{}) StringArgsResultValuesFunc {
-	f, err := GetStringArgsResultValuesFunc(args, commandFunc)
+func MustGetStringArgsResultValuesFunc(commandFunc interface{}, args Args) StringArgsResultValuesFunc {
+	f, err := GetStringArgsResultValuesFunc(commandFunc, args)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetStringMapArgsResultValuesFunc(args Args, commandFunc interface{}) (StringMapArgsResultValuesFunc, error) {
+func GetStringMapArgsResultValuesFunc(commandFunc interface{}, args Args) (StringMapArgsResultValuesFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -103,15 +104,15 @@ func GetStringMapArgsResultValuesFunc(args Args, commandFunc interface{}) (Strin
 	// because ArgsDef knows nothing about the outer embedding type.
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
-	// err := args.(argsDefInner).init(reflect.TypeOf(args), commandFunc)
+	// err := args.(argsDefInner).init(commandFunc, reflect.TypeOf(args))
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return args.StringMapArgsResultValuesFunc(reflect.TypeOf(args), commandFunc)
+	return args.StringMapArgsResultValuesFunc(commandFunc, reflect.TypeOf(args))
 }
 
-func MustGetStringMapArgsResultValuesFunc(args Args, commandFunc interface{}) StringMapArgsResultValuesFunc {
-	f, err := GetStringMapArgsResultValuesFunc(args, commandFunc)
+func MustGetStringMapArgsResultValuesFunc(commandFunc interface{}, args Args) StringMapArgsResultValuesFunc {
+	f, err := GetStringMapArgsResultValuesFunc(commandFunc, args)
 	if err != nil {
 		panic(err)
 	}
@@ -147,6 +148,20 @@ type ArgsDef struct {
 	outerType       reflect.Type
 	argStructFields []reflection.StructFieldName
 	initialized     bool
+}
+
+func (def *ArgsDef) String() string {
+	if !def.initialized {
+		return "ArgsDef not initialized"
+	}
+	var buf bytes.Buffer
+	for _, f := range def.argStructFields {
+		if buf.Len() > 0 {
+			buf.WriteByte(' ')
+		}
+		fmt.Fprintf(&buf, "<%s>", f.Name)
+	}
+	return buf.String()
 }
 
 func (def *ArgsDef) init(argsDefOuterType reflect.Type) {
@@ -232,7 +247,7 @@ func (def *ArgsDef) getStringMapArgsVals(numArgs int, args map[string]string) ([
 	return argVals, nil
 }
 
-func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultsHandlers []ResultsHandler) (StringArgsFunc, error) {
+func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, argsDefOuterType reflect.Type, resultsHandlers []ResultsHandler) (StringArgsFunc, error) {
 	def.init(argsDefOuterType)
 
 	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
@@ -267,7 +282,7 @@ func (def *ArgsDef) StringArgsFunc(argsDefOuterType reflect.Type, commandFunc in
 	}, nil
 }
 
-func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error) {
+func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, argsDefOuterType reflect.Type, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error) {
 	def.init(argsDefOuterType)
 
 	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
@@ -302,7 +317,7 @@ func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc
 	}, nil
 }
 
-func (def *ArgsDef) StringArgsResultValuesFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringArgsResultValuesFunc, error) {
+func (def *ArgsDef) StringArgsResultValuesFunc(commandFunc interface{}, argsDefOuterType reflect.Type) (StringArgsResultValuesFunc, error) {
 	def.init(argsDefOuterType)
 
 	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
@@ -330,7 +345,7 @@ func (def *ArgsDef) StringArgsResultValuesFunc(argsDefOuterType reflect.Type, co
 	}, nil
 }
 
-func (def *ArgsDef) StringMapArgsResultValuesFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringMapArgsResultValuesFunc, error) {
+func (def *ArgsDef) StringMapArgsResultValuesFunc(commandFunc interface{}, argsDefOuterType reflect.Type) (StringMapArgsResultValuesFunc, error) {
 	def.init(argsDefOuterType)
 
 	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
