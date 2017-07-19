@@ -20,57 +20,53 @@ func (f ResultsHandlerFunc) HandleResults(results []reflect.Value) error {
 	return f(results)
 }
 
-// TODO single print call?
-func PrintTo(writer io.Writer) ResultsHandlerFunc {
-	return func(results []reflect.Value) (err error) {
-		for _, result := range results {
-			switch reflection.DerefValue(result).Kind() {
-			case reflect.Struct, reflect.Slice, reflect.Array:
-				b, err := json.MarshalIndent(result.Interface(), "", "  ")
-				if err != nil {
-					return err
-				}
-				fmt.Fprint(writer, string(b))
-			default:
-				fmt.Fprint(writer, result.Interface())
+func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
+	r := make([]interface{}, len(results))
+	for i, result := range results {
+		switch reflection.DerefValue(result).Kind() {
+		case reflect.Struct, reflect.Slice, reflect.Array:
+			b, err := json.MarshalIndent(result.Interface(), "", "  ")
+			if err != nil {
+				return nil, err
 			}
+			r[i] = string(b)
+		default:
+			r[i] = result.Interface()
 		}
-		return nil
+	}
+	return r, nil
+}
+
+func PrintTo(writer io.Writer) ResultsHandlerFunc {
+	return func(results []reflect.Value) error {
+		r, err := resultsToInterfaces(results)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprint(writer, r...)
+		return err
 	}
 }
 
 func PrintlnTo(writer io.Writer) ResultsHandlerFunc {
-	return func(results []reflect.Value) (err error) {
-		for _, result := range results {
-			switch reflection.DerefValue(result).Kind() {
-			case reflect.Struct, reflect.Slice, reflect.Array:
-				b, err := json.MarshalIndent(result.Interface(), "", "  ")
-				if err != nil {
-					return err
-				}
-				fmt.Fprintln(writer, string(b))
-			default:
-				fmt.Fprintln(writer, result.Interface())
-			}
+	return func(results []reflect.Value) error {
+		r, err := resultsToInterfaces(results)
+		if err != nil {
+			return err
 		}
-		return nil
+		_, err = fmt.Fprintln(writer, r...)
+		return err
 	}
 }
 
+
 func LogTo(logger *log.Logger) ResultsHandlerFunc {
 	return func(results []reflect.Value) error {
-		for _, result := range results {
-			switch reflection.DerefValue(result).Kind() {
-			case reflect.Struct, reflect.Slice, reflect.Array:
-				b, err := json.Marshal(result.Interface())
-				if err != nil {
-					return err
-				}
-				logger.Print(string(b))
-			default:
-				logger.Print(result.Interface())
-			}
+		r, err := resultsToInterfaces(results)
+		if err != nil {
+			return err
 		}
+		logger.Println(r...)
 		return nil
 	}
 }

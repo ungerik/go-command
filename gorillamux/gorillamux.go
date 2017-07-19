@@ -1,68 +1,41 @@
 package gorillamux
 
 import (
-	"bytes"
-	"encoding/json"
 	"net/http"
-	"reflect"
 
 	"github.com/gorilla/mux"
 
 	"github.com/ungerik/go-command"
-	"github.com/ungerik/go-httpx/returning"
+	"github.com/ungerik/go-httpx/httperr"
 )
 
-type ResultsWriter interface {
-	WriteResults(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
-	WriteError(err error, writer http.ResponseWriter, request *http.Request)
-}
-
-var RespondJSON respondJSON
-
-type respondJSON struct{}
-
-func (respondJSON) WriteResults(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
-	buf := bytes.NewBuffer(make([]byte, 0, 1024))
-	for _, result := range results {
-		encoder := json.NewEncoder(buf)
-		if returning.PrettyPrintResponses {
-			encoder.SetIndent("", returning.PrettyPrintIndent)
-		}
-		err := encoder.Encode(result)
-		if err != nil {
-			return err
+func handleErr(err error, writer http.ResponseWriter, request *http.Request, errHandlers []httperr.Handler) {
+	if err == nil {
+		return
+	}
+	if len(errHandlers) == 0 {
+		DefaultErrorHandler.HandleError(err, writer, request)
+	} else {
+		for _, errHandler := range errHandlers {
+			errHandler.HandleError(err, writer, request)
 		}
 	}
-	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-	writer.Write(buf.Bytes())
-	return nil
 }
 
-func (respondJSON) WriteError(err error, writer http.ResponseWriter, request *http.Request) {
-	returning.HandleError(err, writer, request)
-}
+func CommandHandler(args command.Args, commandFunc interface{}, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
+	f := command.MustGetStringMapArgsResultValuesFunc(args, commandFunc)
 
-func resultsHandlerFrom(resultsWriter ResultsWriter, writer http.ResponseWriter, request *http.Request) command.ResultsHandlerFunc {
-	return func(results []reflect.Value) error {
-		return resultsWriter.WriteResults(results, writer, request)
-	}
-}
-
-func CommandHandler(args command.Args, commandFunc interface{}, resultsWriter ResultsWriter) http.HandlerFunc {
-	f := command.MustGetStringMapArgsWithResultsHandlerFunc(args, commandFunc)
 	return func(writer http.ResponseWriter, request *http.Request) {
-		if returning.CatchPanics {
-			defer func() {
-				if r := recover(); r != nil {
-					returning.WriteInternalServerError(writer, r)
-				}
-			}()
+		if CatchPanics {
+			defer handleErr(httperr.Recover(), writer, request, errHandlers)
 		}
-		args := mux.Vars(request)
-		resultsHandler := resultsHandlerFrom(resultsWriter, writer, request)
-		err := f(args, resultsHandler)
+
+		results, err := f(mux.Vars(request))
+
 		if err != nil {
-			resultsWriter.WriteError(err, writer, request)
+			handleErr(err, writer, request, errHandlers)
+		} else {
+			resultsWriter.WriteResults(results, writer, request)
 		}
 	}
 }

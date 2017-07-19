@@ -12,14 +12,14 @@ import (
 type StringArgsFunc func(args ...string) error
 type StringMapArgsFunc func(args map[string]string) error
 
-type StringArgsWithResultsHandlerFunc func(args []string, resultsHandler ResultsHandler) error
-type StringMapArgsWithResultsHandlerFunc func(args map[string]string, resultsHandler ResultsHandler) error
+type StringArgsResultValuesFunc func(args []string) ([]reflect.Value, error)
+type StringMapArgsResultValuesFunc func(args map[string]string) ([]reflect.Value, error)
 
 type Args interface {
 	StringArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultsHandler ResultsHandler) (StringArgsFunc, error)
 	StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc interface{}, resultsHandler ResultsHandler) (StringMapArgsFunc, error)
-	StringArgsWithResultsHandlerFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringArgsWithResultsHandlerFunc, error)
-	StringMapArgsWithResultsHandlerFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringMapArgsWithResultsHandlerFunc, error)
+	StringArgsResultValuesFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringArgsResultValuesFunc, error)
+	StringMapArgsResultValuesFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringMapArgsResultValuesFunc, error)
 }
 
 func GetStringArgsFunc(args Args, commandFunc interface{}, resultsHandler ResultsHandler) (StringArgsFunc, error) {
@@ -70,7 +70,7 @@ func MustGetStringMapArgsFunc(args Args, commandFunc interface{}, resultsHandler
 	return f
 }
 
-func GetStringArgsWithResultsHandlerFunc(args Args, commandFunc interface{}) (StringArgsWithResultsHandlerFunc, error) {
+func GetStringArgsResultValuesFunc(args Args, commandFunc interface{}) (StringArgsResultValuesFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -83,18 +83,18 @@ func GetStringArgsWithResultsHandlerFunc(args Args, commandFunc interface{}) (St
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return args.StringArgsWithResultsHandlerFunc(reflect.TypeOf(args), commandFunc)
+	return args.StringArgsResultValuesFunc(reflect.TypeOf(args), commandFunc)
 }
 
-func MustGetStringArgsWithResultsHandlerFunc(args Args, commandFunc interface{}) StringArgsWithResultsHandlerFunc {
-	f, err := GetStringArgsWithResultsHandlerFunc(args, commandFunc)
+func MustGetStringArgsResultValuesFunc(args Args, commandFunc interface{}) StringArgsResultValuesFunc {
+	f, err := GetStringArgsResultValuesFunc(args, commandFunc)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetStringMapArgsWithResultsHandlerFunc(args Args, commandFunc interface{}) (StringMapArgsWithResultsHandlerFunc, error) {
+func GetStringMapArgsResultValuesFunc(args Args, commandFunc interface{}) (StringMapArgsResultValuesFunc, error) {
 	// Note: here happens something unexpected!
 	// args implements the Args interface with ArgsDef.
 	// This looks like a virtual method call, but of course it is not.
@@ -107,11 +107,11 @@ func GetStringMapArgsWithResultsHandlerFunc(args Args, commandFunc interface{}) 
 	// if err != nil {
 	// 	return nil, err
 	// }
-	return args.StringMapArgsWithResultsHandlerFunc(reflect.TypeOf(args), commandFunc)
+	return args.StringMapArgsResultValuesFunc(reflect.TypeOf(args), commandFunc)
 }
 
-func MustGetStringMapArgsWithResultsHandlerFunc(args Args, commandFunc interface{}) StringMapArgsWithResultsHandlerFunc {
-	f, err := GetStringMapArgsWithResultsHandlerFunc(args, commandFunc)
+func MustGetStringMapArgsResultValuesFunc(args Args, commandFunc interface{}) StringMapArgsResultValuesFunc {
+	f, err := GetStringMapArgsResultValuesFunc(args, commandFunc)
 	if err != nil {
 		panic(err)
 	}
@@ -296,7 +296,7 @@ func (def *ArgsDef) StringMapArgsFunc(argsDefOuterType reflect.Type, commandFunc
 	}, nil
 }
 
-func (def *ArgsDef) StringArgsWithResultsHandlerFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringArgsWithResultsHandlerFunc, error) {
+func (def *ArgsDef) StringArgsResultValuesFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringArgsResultValuesFunc, error) {
 	def.init(argsDefOuterType)
 
 	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
@@ -304,10 +304,10 @@ func (def *ArgsDef) StringArgsWithResultsHandlerFunc(argsDefOuterType reflect.Ty
 		return nil, err
 	}
 
-	return func(args []string, resultsHandler ResultsHandler) error {
+	return func(args []string) ([]reflect.Value, error) {
 		argVals, err := def.getStringArgsVals(numArgs, args)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		resultVals := commandFuncVal.Call(argVals)
@@ -316,19 +316,15 @@ func (def *ArgsDef) StringArgsWithResultsHandlerFunc(argsDefOuterType reflect.Ty
 		if errorIndex != -1 {
 			err, _ = resultVals[errorIndex].Interface().(error)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			resultVals = resultVals[:errorIndex]
 		}
-		if resultsHandler == nil {
-			return nil
-		}
-
-		return resultsHandler.HandleResults(resultVals)
+		return resultVals, nil
 	}, nil
 }
 
-func (def *ArgsDef) StringMapArgsWithResultsHandlerFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringMapArgsWithResultsHandlerFunc, error) {
+func (def *ArgsDef) StringMapArgsResultValuesFunc(argsDefOuterType reflect.Type, commandFunc interface{}) (StringMapArgsResultValuesFunc, error) {
 	def.init(argsDefOuterType)
 
 	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
@@ -336,10 +332,10 @@ func (def *ArgsDef) StringMapArgsWithResultsHandlerFunc(argsDefOuterType reflect
 		return nil, err
 	}
 
-	return func(args map[string]string, resultsHandler ResultsHandler) (err error) {
+	return func(args map[string]string) ([]reflect.Value, error) {
 		argVals, err := def.getStringMapArgsVals(numArgs, args)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		resultVals := commandFuncVal.Call(argVals)
@@ -348,14 +344,10 @@ func (def *ArgsDef) StringMapArgsWithResultsHandlerFunc(argsDefOuterType reflect
 		if errorIndex != -1 {
 			err, _ = resultVals[errorIndex].Interface().(error)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			resultVals = resultVals[:errorIndex]
 		}
-		if resultsHandler == nil {
-			return nil
-		}
-
-		return resultsHandler.HandleResults(resultVals)
+		return resultVals, nil
 	}, nil
 }
