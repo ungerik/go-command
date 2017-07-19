@@ -12,6 +12,7 @@ const Default = ""
 
 type stringArgsCommand struct {
 	command         string
+	description     string
 	args            Args
 	commandFunc     interface{}
 	stringArgsFunc  StringArgsFunc
@@ -20,13 +21,14 @@ type stringArgsCommand struct {
 
 type StringArgsDispatcher map[string]*stringArgsCommand
 
-func (disp StringArgsDispatcher) AddCommand(command string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
+func (disp StringArgsDispatcher) AddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
 	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
 		return err
 	}
 	disp[command] = &stringArgsCommand{
 		command:         command,
+		description:     description,
 		args:            args,
 		commandFunc:     commandFunc,
 		stringArgsFunc:  stringArgsFunc,
@@ -35,20 +37,21 @@ func (disp StringArgsDispatcher) AddCommand(command string, commandFunc interfac
 	return nil
 }
 
-func (disp StringArgsDispatcher) MustAddCommand(command string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) {
-	err := disp.AddCommand(command, commandFunc, args, resultsHandlers...)
+func (disp StringArgsDispatcher) MustAddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) {
+	err := disp.AddCommand(command, description, commandFunc, args, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (disp StringArgsDispatcher) AddDefaultCommand(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
+func (disp StringArgsDispatcher) AddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
 	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
 		return err
 	}
 	disp[Default] = &stringArgsCommand{
 		command:         Default,
+		description:     description,
 		args:            args,
 		commandFunc:     commandFunc,
 		stringArgsFunc:  stringArgsFunc,
@@ -57,8 +60,8 @@ func (disp StringArgsDispatcher) AddDefaultCommand(commandFunc interface{}, args
 	return nil
 }
 
-func (disp StringArgsDispatcher) MustAddDefaultCommand(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) {
-	err := disp.AddDefaultCommand(commandFunc, args, resultsHandlers...)
+func (disp StringArgsDispatcher) MustAddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) {
+	err := disp.AddDefaultCommand(description, commandFunc, args, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
@@ -117,7 +120,7 @@ func (disp StringArgsDispatcher) MustDispatchCombined(commandAndArgs []string) (
 	return command
 }
 
-func (disp StringArgsDispatcher) PrintUsage(title string) {
+func (disp StringArgsDispatcher) PrintCommands(appName string) {
 	list := make([]*stringArgsCommand, 0, len(disp))
 	for _, cmd := range disp {
 		list = append(list, cmd)
@@ -127,14 +130,11 @@ func (disp StringArgsDispatcher) PrintUsage(title string) {
 	})
 
 	for _, cmd := range list {
-		fmt.Printf("  %s %s %s\n", title, cmd.command, cmd.args)
-
-		// if len(cmd.commandDesc) == 0 {
-		// 	fmt.Fprintln(Output)
-		// } else {
-		// 	for _, desc := range cmd.commandDesc {
-		// 		fmt.Fprintf(Output, "      %s\n", desc)
-		// 	}
-		// }
+		fmt.Printf("  %s %s %s\n", appName, cmd.command, cmd.args)
+		if len(cmd.description) == 0 {
+			fmt.Println()
+		} else {
+			fmt.Printf("      %s\n", cmd.description)
+		}
 	}
 }
