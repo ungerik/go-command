@@ -3,6 +3,7 @@ package command
 import (
 	"errors"
 	"fmt"
+	"io"
 	"sort"
 )
 
@@ -130,11 +131,19 @@ func (disp StringArgsDispatcher) PrintCommands(appName string) {
 	})
 
 	for _, cmd := range list {
-		fmt.Printf("  %s %s %s\n", appName, cmd.command, cmd.args)
+		CommandUsageColor.Printf("  %s %s %s\n", appName, cmd.command, cmd.args)
 		if len(cmd.description) == 0 {
-			fmt.Println()
+			CommandDescriptionColor.Println()
 		} else {
-			fmt.Printf("      %s\n", cmd.description)
+			CommandDescriptionColor.Printf("      %s\n", cmd.description)
 		}
+	}
+}
+
+func (disp StringArgsDispatcher) PrintCommandsUsageIntro(appName string, output io.Writer) {
+	if len(disp) > 0 {
+		fmt.Fprint(output, "Commands:\n")
+		disp.PrintCommands(appName)
+		fmt.Fprint(output, "Flags:\n")
 	}
 }
