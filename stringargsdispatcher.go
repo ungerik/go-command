@@ -1,10 +1,13 @@
 package command
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"sort"
+	"strings"
+	"unicode"
+
+	"github.com/pkg/errors"
 )
 
 var ErrNotFound = errors.New("command not found")
@@ -20,9 +23,22 @@ type stringArgsCommand struct {
 	resultsHandlers []ResultsHandler
 }
 
+func checkCommandChars(command string) error {
+	if strings.IndexFunc(command, unicode.IsSpace) != -1 {
+		return errors.Errorf("Command contains space characters: '%s'", command)
+	}
+	if strings.IndexFunc(command, unicode.IsGraphic) == -1 {
+		return errors.Errorf("Command contains non graphc characters: '%s'", command)
+	}
+	return nil
+}
+
 type StringArgsDispatcher map[string]*stringArgsCommand
 
 func (disp StringArgsDispatcher) AddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
+	if err := checkCommandChars(command); err != nil {
+		return err
+	}
 	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
 		return err
