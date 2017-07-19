@@ -58,7 +58,7 @@ func Test_ArgsDef(t *testing.T) {
 
 func Test_GetStringArgsFunc(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
-	stringCommandFunc, err := GetStringArgsFunc(&commandArgsDef, CommandFunc, nil)
+	stringCommandFunc, err := GetStringArgsFunc(&commandArgsDef, CommandFunc)
 	assert.NoError(t, err, "GetStringArgsFunc")
 	passedArgsCollector = nil
 	err = stringCommandFunc("123", "Hello World!", "true")
@@ -70,7 +70,7 @@ func Test_GetStringArgsFunc(t *testing.T) {
 
 func Test_GetStringMapArgsFunc(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
-	stringCommandFunc, err := GetStringMapArgsFunc(&commandArgsDef, CommandFunc, nil)
+	stringCommandFunc, err := GetStringMapArgsFunc(&commandArgsDef, CommandFunc)
 	assert.NoError(t, err, "GetStringMapArgsFunc")
 	argsMap := map[string]string{
 		"int0":  "123",

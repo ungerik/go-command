@@ -40,7 +40,7 @@ func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
 func PrintTo(writer io.Writer) ResultsHandlerFunc {
 	return func(results []reflect.Value) error {
 		r, err := resultsToInterfaces(results)
-		if err != nil {
+		if err != nil || len(r) == 0 {
 			return err
 		}
 		_, err = fmt.Fprint(writer, r...)
@@ -51,7 +51,7 @@ func PrintTo(writer io.Writer) ResultsHandlerFunc {
 func PrintlnTo(writer io.Writer) ResultsHandlerFunc {
 	return func(results []reflect.Value) error {
 		r, err := resultsToInterfaces(results)
-		if err != nil {
+		if err != nil || len(r) == 0 {
 			return err
 		}
 		_, err = fmt.Fprintln(writer, r...)
@@ -59,11 +59,10 @@ func PrintlnTo(writer io.Writer) ResultsHandlerFunc {
 	}
 }
 
-
 func LogTo(logger *log.Logger) ResultsHandlerFunc {
 	return func(results []reflect.Value) error {
 		r, err := resultsToInterfaces(results)
-		if err != nil {
+		if err != nil || len(r) == 0 {
 			return err
 		}
 		logger.Println(r...)
