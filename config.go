@@ -11,6 +11,6 @@ var (
 	// command usage description will be printed on the screen.
 	CommandDescriptionColor = color.New(color.FgCyan)
 
-	ArgNameTag        = "cmd"
+	ArgNameTag        = "arg"
 	ArgDescriptionTag = "desc"
 )

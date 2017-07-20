@@ -33,7 +33,27 @@ func checkCommandChars(command string) error {
 	return nil
 }
 
-type StringArgsDispatcher map[string]*stringArgsCommand
+type StringArgsCommandLogger interface {
+	LogStringArgsCommand(command string, args []string)
+}
+
+type StringArgsCommandLoggerFunc func(command string, args []string)
+
+func (f StringArgsCommandLoggerFunc) LogStringArgsCommand(command string, args []string) {
+	f(command, args)
+}
+
+type StringArgsDispatcher struct {
+	comm    map[string]*stringArgsCommand
+	loggers []StringArgsCommandLogger
+}
+
+func NewStringArgsDispatcher(loggers ...StringArgsCommandLogger) *StringArgsDispatcher {
+	return &StringArgsDispatcher{
+		comm:    make(map[string]*stringArgsCommand),
+		loggers: loggers,
+	}
+}
 
 func (disp StringArgsDispatcher) AddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
 	if err := checkCommandChars(command); err != nil {
@@ -43,7 +63,7 @@ func (disp StringArgsDispatcher) AddCommand(command, description string, command
 	if err != nil {
 		return err
 	}
-	disp[command] = &stringArgsCommand{
+	disp.comm[command] = &stringArgsCommand{
 		command:         command,
 		description:     description,
 		args:            args,
@@ -66,7 +86,7 @@ func (disp StringArgsDispatcher) AddDefaultCommand(description string, commandFu
 	if err != nil {
 		return err
 	}
-	disp[Default] = &stringArgsCommand{
+	disp.comm[Default] = &stringArgsCommand{
 		command:         Default,
 		description:     description,
 		args:            args,
@@ -85,19 +105,22 @@ func (disp StringArgsDispatcher) MustAddDefaultCommand(description string, comma
 }
 
 func (disp StringArgsDispatcher) HasCommnd(command string) bool {
-	_, found := disp[command]
+	_, found := disp.comm[command]
 	return found
 }
 
 func (disp StringArgsDispatcher) HasDefaultCommnd() bool {
-	_, found := disp[Default]
+	_, found := disp.comm[Default]
 	return found
 }
 
 func (disp StringArgsDispatcher) Dispatch(command string, args ...string) error {
-	cmd, found := disp[command]
+	cmd, found := disp.comm[command]
 	if !found {
 		return ErrNotFound
+	}
+	for _, logger := range disp.loggers {
+		logger.LogStringArgsCommand(command, args)
 	}
 	return cmd.stringArgsFunc(args...)
 }
@@ -138,8 +161,8 @@ func (disp StringArgsDispatcher) MustDispatchCombined(commandAndArgs []string) (
 }
 
 func (disp StringArgsDispatcher) PrintCommands(appName string) {
-	list := make([]*stringArgsCommand, 0, len(disp))
-	for _, cmd := range disp {
+	list := make([]*stringArgsCommand, 0, len(disp.comm))
+	for _, cmd := range disp.comm {
 		list = append(list, cmd)
 	}
 	sort.Slice(list, func(i, j int) bool {
@@ -157,7 +180,7 @@ func (disp StringArgsDispatcher) PrintCommands(appName string) {
 }
 
 func (disp StringArgsDispatcher) PrintCommandsUsageIntro(appName string, output io.Writer) {
-	if len(disp) > 0 {
+	if len(disp.comm) > 0 {
 		fmt.Fprint(output, "Commands:\n")
 		disp.PrintCommands(appName)
 		fmt.Fprint(output, "Flags:\n")

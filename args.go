@@ -250,6 +250,8 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 // 	init(argsDefType reflect.Type, commandFunc interface{}) error
 // }
 
+var WithoutArgs ArgsDef
+
 type ArgsDef struct {
 	outerStructType reflect.Type
 	argStructFields []reflection.StructFieldName
