@@ -10,4 +10,7 @@ var (
 	// CommandDescriptionColor is the color in which the
 	// command usage description will be printed on the screen.
 	CommandDescriptionColor = color.New(color.FgCyan)
+
+	ArgNameTag        = "cmd"
+	ArgDescriptionTag = "desc"
 )
