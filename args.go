@@ -170,22 +170,26 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 	destPtr := destVal.Addr().Interface()
 
 	switch v := destPtr.(type) {
-	case encoding.TextUnmarshaler:
-		return v.UnmarshalText([]byte(sourceStr))
+	case *string:
+		*v = sourceStr
+		return nil
+
 	case *[]byte:
 		*v = []byte(sourceStr)
 		return nil
+
+	case encoding.TextUnmarshaler:
+		return v.UnmarshalText([]byte(sourceStr))
 	}
 
 	switch destVal.Kind() {
 	case reflect.String:
-		// Don't check for type string directly,
-		// use .Kind to match types derived from string
-		destVal.Set(reflect.ValueOf(sourceStr))
+		destVal.Set(reflect.ValueOf(sourceStr).Convert(destVal.Type()))
 		return nil
 
 	case reflect.Struct:
-		// JSON might not be the best format for command line arguments, but what else?
+		// JSON might not be the best format for command line arguments,
+		// but it could have also come from a HTTP request body or other sources
 		return json.Unmarshal([]byte(sourceStr), destPtr)
 
 	case reflect.Slice:
