@@ -7,16 +7,18 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+
+	command "github.com/ungerik/go-command"
 )
 
 type ResultsWriter interface {
-	WriteResults(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
+	WriteResults(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
 }
 
-type ResultsWriterFunc func(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
+type ResultsWriterFunc func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
 
-func (f ResultsWriterFunc) WriteResults(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
-	return f(results, writer, request)
+func (f ResultsWriterFunc) WriteResults(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+	return f(args, vars, results, writer, request)
 }
 
 func encodeJSON(response interface{}) ([]byte, error) {
@@ -26,7 +28,7 @@ func encodeJSON(response interface{}) ([]byte, error) {
 	return json.Marshal(response)
 }
 
-var RespondJSON ResultsWriterFunc = func(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+var RespondJSON ResultsWriterFunc = func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
 	var buf []byte
 	for _, result := range results {
 		b, err := encodeJSON(result.Interface())
@@ -47,7 +49,7 @@ func encodeXML(response interface{}) ([]byte, error) {
 	return xml.Marshal(response)
 }
 
-var RespondXML ResultsWriterFunc = func(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+var RespondXML ResultsWriterFunc = func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
 	var buf []byte
 	for _, result := range results {
 		b, err := encodeXML(result.Interface())
@@ -61,7 +63,7 @@ var RespondXML ResultsWriterFunc = func(results []reflect.Value, writer http.Res
 	return nil
 }
 
-var RespondPlaintext ResultsWriterFunc = func(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+var RespondPlaintext ResultsWriterFunc = func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
 	var buf bytes.Buffer
 	for _, result := range results {
 		fmt.Fprintf(&buf, "%s", result.Interface())
@@ -71,7 +73,7 @@ var RespondPlaintext ResultsWriterFunc = func(results []reflect.Value, writer ht
 	return nil
 }
 
-var RespondHTML ResultsWriterFunc = func(results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
 	var buf bytes.Buffer
 	for _, result := range results {
 		fmt.Fprintf(&buf, "%s", result.Interface())

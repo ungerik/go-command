@@ -19,12 +19,14 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 			defer handleErr(httperr.Recover(), writer, request, errHandlers)
 		}
 
-		results, err := f(mux.Vars(request))
+		vars := mux.Vars(request)
+
+		results, err := f(vars)
 
 		if err != nil {
 			handleErr(err, writer, request, errHandlers)
 		} else {
-			resultsWriter.WriteResults(results, writer, request)
+			resultsWriter.WriteResults(args, vars, results, writer, request)
 		}
 	}
 }
@@ -58,25 +60,25 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 			defer handleErr(httperr.Recover(), writer, request, errHandlers)
 		}
 
-		args := mux.Vars(request)
+		vars := mux.Vars(request)
 		name, value, err := bodyConverter.RequestBodyToArg(request)
 		if err != nil {
 			handleErr(err, writer, request, errHandlers)
 			return
 		}
-		if _, exists := args[name]; exists {
+		if _, exists := vars[name]; exists {
 			err = errors.Errorf("Argument '%s' already set by request URL path", name)
 			handleErr(err, writer, request, errHandlers)
 			return
 		}
-		args[name] = value
+		vars[name] = value
 
-		results, err := f(args)
+		results, err := f(vars)
 
 		if err != nil {
 			handleErr(err, writer, request, errHandlers)
 		} else {
-			resultsWriter.WriteResults(results, writer, request)
+			resultsWriter.WriteResults(args, vars, results, writer, request)
 		}
 	}
 }

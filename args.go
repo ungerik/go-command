@@ -28,7 +28,7 @@ type Args interface {
 }
 
 type ArgsImpl interface {
-	Init(outerStructType reflect.Type) error
+	Init(outerArgs Args) error
 	StringArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringArgsFunc, error)
 	StringMapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error)
 	StringArgsResultValuesFunc(commandFunc interface{}) (StringArgsResultValuesFunc, error)
@@ -45,7 +45,7 @@ func GetStringArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...Re
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
 	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(reflect.TypeOf(args))
+	err := argsImpl.Init(args)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func GetStringMapArgsFunc(commandFunc interface{}, args Args, resultsHandlers ..
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
 	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(reflect.TypeOf(args))
+	err := argsImpl.Init(args)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func GetStringArgsResultValuesFunc(commandFunc interface{}, args Args) (StringAr
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
 	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(reflect.TypeOf(args))
+	err := argsImpl.Init(args)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func GetStringMapArgsResultValuesFunc(commandFunc interface{}, args Args) (Strin
 	// But args, the first argument to the method, has all the type information,
 	// because here the complete outer embedding struct is passed.
 	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(reflect.TypeOf(args))
+	err := argsImpl.Init(args)
 	if err != nil {
 		return nil, err
 	}
@@ -257,6 +257,7 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 var WithoutArgs ArgsDef
 
 type ArgsDef struct {
+	outerArgs       Args
 	outerStructType reflect.Type
 	argStructFields []reflection.StructFieldName
 	initialized     bool
@@ -296,13 +297,13 @@ func (def *ArgsDef) String() string {
 	return buf.String()
 }
 
-func (def *ArgsDef) Init(outerStructType reflect.Type) error {
+func (def *ArgsDef) Init(outerArgs Args) error {
 	if def.initialized {
 		return nil
 	}
-	def.outerStructType = reflection.DerefType(outerStructType)
+	def.outerStructType = reflection.DerefType(reflect.TypeOf(outerArgs))
 	if def.outerStructType.Kind() != reflect.Struct {
-		return errors.Errorf("ArgsDef must be contained in a struct, but outer type is %s", outerStructType)
+		return errors.Errorf("ArgsDef must be contained in a struct, but outer type is %s", def.outerStructType)
 	}
 	def.argStructFields = reflection.FlatExportedStructFieldNames(def.outerStructType, ArgNameTag)
 	def.initialized = true
@@ -313,7 +314,7 @@ func (def *ArgsDef) checkFunctionSignature(commandFunc interface{}) (commandFunc
 	commandFuncVal = reflect.ValueOf(commandFunc)
 	commandFuncType := commandFuncVal.Type()
 	if commandFuncType.Kind() != reflect.Func {
-		return reflect.Value{}, -1, -1, errors.Errorf("expected a function, but got %s", commandFuncType)
+		return reflect.Value{}, -1, -1, errors.Errorf("expected a function or method, but got %s", commandFuncType)
 	}
 
 	numResults := commandFuncType.NumOut()
@@ -406,7 +407,7 @@ func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, resultsHandlers []Re
 			resultVals = resultVals[:errorIndex]
 		}
 		for _, resultsHandler := range resultsHandlers {
-			err = resultsHandler.HandleResults(resultVals)
+			err = resultsHandler.HandleResults(def.outerArgs, argVals, resultVals)
 			if err != nil {
 				return err
 			}
@@ -439,7 +440,7 @@ func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers [
 			resultVals = resultVals[:errorIndex]
 		}
 		for _, resultsHandler := range resultsHandlers {
-			err = resultsHandler.HandleResults(resultVals)
+			err = resultsHandler.HandleResults(def.outerArgs, argVals, resultVals)
 			if err != nil {
 				return err
 			}

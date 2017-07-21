@@ -11,13 +11,13 @@ import (
 )
 
 type ResultsHandler interface {
-	HandleResults(results []reflect.Value) error
+	HandleResults(args Args, argVals, resultVals []reflect.Value) error
 }
 
-type ResultsHandlerFunc func(results []reflect.Value) error
+type ResultsHandlerFunc func(args Args, argVals, resultVals []reflect.Value) error
 
-func (f ResultsHandlerFunc) HandleResults(results []reflect.Value) error {
-	return f(results)
+func (f ResultsHandlerFunc) HandleResults(args Args, argVals, resultVals []reflect.Value) error {
+	return f(args, argVals, resultVals)
 }
 
 func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
@@ -38,8 +38,8 @@ func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
 }
 
 func PrintTo(writer io.Writer) ResultsHandlerFunc {
-	return func(results []reflect.Value) error {
-		r, err := resultsToInterfaces(results)
+	return func(args Args, argVals, resultVals []reflect.Value) error {
+		r, err := resultsToInterfaces(resultVals)
 		if err != nil || len(r) == 0 {
 			return err
 		}
@@ -49,8 +49,8 @@ func PrintTo(writer io.Writer) ResultsHandlerFunc {
 }
 
 func PrintlnTo(writer io.Writer) ResultsHandlerFunc {
-	return func(results []reflect.Value) error {
-		r, err := resultsToInterfaces(results)
+	return func(args Args, argVals, resultVals []reflect.Value) error {
+		r, err := resultsToInterfaces(resultVals)
 		if err != nil || len(r) == 0 {
 			return err
 		}
@@ -60,12 +60,19 @@ func PrintlnTo(writer io.Writer) ResultsHandlerFunc {
 }
 
 func LogTo(logger *log.Logger) ResultsHandlerFunc {
-	return func(results []reflect.Value) error {
-		r, err := resultsToInterfaces(results)
+	return func(args Args, argVals, resultVals []reflect.Value) error {
+		r, err := resultsToInterfaces(resultVals)
 		if err != nil || len(r) == 0 {
 			return err
 		}
 		logger.Println(r...)
 		return nil
 	}
+}
+
+type PrintlnText string
+
+func (t PrintlnText) HandleResults(args Args, argVals, resultVals []reflect.Value) error {
+	_, err := fmt.Println(t)
+	return err
 }
