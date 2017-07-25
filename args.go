@@ -276,17 +276,14 @@ func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, resultsHandlers []Re
 
 		resultVals := commandFuncVal.Call(argVals)
 
-		// Check for error first, don't handle other results if err != nil
+		var resultErr error
 		if errorIndex != -1 {
-			err, _ = resultVals[errorIndex].Interface().(error)
-			if err != nil {
-				return err
-			}
+			resultErr, _ = resultVals[errorIndex].Interface().(error)
 			resultVals = resultVals[:errorIndex]
 		}
 		for _, resultsHandler := range resultsHandlers {
-			err = resultsHandler.HandleResults(def.outerArgs, argVals, resultVals)
-			if err != nil {
+			err = resultsHandler.HandleResults(def.outerArgs, argVals, resultVals, resultErr)
+			if err != nil && err != resultErr {
 				return err
 			}
 		}
@@ -309,17 +306,14 @@ func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers [
 
 		resultVals := commandFuncVal.Call(argVals)
 
-		// Check for error first, don't handle other results if err != nil
+		var resultErr error
 		if errorIndex != -1 {
-			err, _ = resultVals[errorIndex].Interface().(error)
-			if err != nil {
-				return err
-			}
+			resultErr, _ = resultVals[errorIndex].Interface().(error)
 			resultVals = resultVals[:errorIndex]
 		}
 		for _, resultsHandler := range resultsHandlers {
-			err = resultsHandler.HandleResults(def.outerArgs, argVals, resultVals)
-			if err != nil {
+			err = resultsHandler.HandleResults(def.outerArgs, argVals, resultVals, resultErr)
+			if err != nil && err != resultErr {
 				return err
 			}
 		}
@@ -342,15 +336,12 @@ func (def *ArgsDef) StringArgsResultValuesFunc(commandFunc interface{}) (StringA
 
 		resultVals := commandFuncVal.Call(argVals)
 
-		// Check for error first, don't handle other results if err != nil
+		var resultErr error
 		if errorIndex != -1 {
-			err, _ = resultVals[errorIndex].Interface().(error)
-			if err != nil {
-				return nil, err
-			}
+			resultErr, _ = resultVals[errorIndex].Interface().(error)
 			resultVals = resultVals[:errorIndex]
 		}
-		return resultVals, nil
+		return resultVals, resultErr
 	}, nil
 }
 
@@ -368,14 +359,11 @@ func (def *ArgsDef) StringMapArgsResultValuesFunc(commandFunc interface{}) (Stri
 
 		resultVals := commandFuncVal.Call(argVals)
 
-		// Check for error first, don't handle other results if err != nil
+		var resultErr error
 		if errorIndex != -1 {
-			err, _ = resultVals[errorIndex].Interface().(error)
-			if err != nil {
-				return nil, err
-			}
+			resultErr, _ = resultVals[errorIndex].Interface().(error)
 			resultVals = resultVals[:errorIndex]
 		}
-		return resultVals, nil
+		return resultVals, resultErr
 	}, nil
 }

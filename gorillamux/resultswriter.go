@@ -12,21 +12,13 @@ import (
 )
 
 type ResultsWriter interface {
-	WriteResults(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
-
-	// HandleError can handle err and return nil,
-	// or return err if it does not want to handle it.
-	HandleError(err error) error
+	WriteResults(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error
 }
 
-type ResultsWriterFunc func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
+type ResultsWriterFunc func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error
 
-func (f ResultsWriterFunc) WriteResults(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
-	return f(args, vars, results, writer, request)
-}
-
-func (f ResultsWriterFunc) HandleError(err error) error {
-	return err
+func (f ResultsWriterFunc) WriteResults(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	return f(args, vars, resultVals, resultErr, writer, request)
 }
 
 func encodeJSON(response interface{}) ([]byte, error) {
@@ -36,10 +28,13 @@ func encodeJSON(response interface{}) ([]byte, error) {
 	return json.Marshal(response)
 }
 
-var RespondJSON ResultsWriterFunc = func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+var RespondJSON ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	if resultErr != nil {
+		return resultErr
+	}
 	var buf []byte
-	for _, result := range results {
-		b, err := encodeJSON(result.Interface())
+	for _, resultVal := range resultVals {
+		b, err := encodeJSON(resultVal.Interface())
 		if err != nil {
 			return err
 		}
@@ -57,10 +52,13 @@ func encodeXML(response interface{}) ([]byte, error) {
 	return xml.Marshal(response)
 }
 
-var RespondXML ResultsWriterFunc = func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+var RespondXML ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	if resultErr != nil {
+		return resultErr
+	}
 	var buf []byte
-	for _, result := range results {
-		b, err := encodeXML(result.Interface())
+	for _, resultVal := range resultVals {
+		b, err := encodeXML(resultVal.Interface())
 		if err != nil {
 			return err
 		}
@@ -71,20 +69,26 @@ var RespondXML ResultsWriterFunc = func(args command.Args, vars map[string]strin
 	return nil
 }
 
-var RespondPlaintext ResultsWriterFunc = func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+var RespondPlaintext ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	if resultErr != nil {
+		return resultErr
+	}
 	var buf bytes.Buffer
-	for _, result := range results {
-		fmt.Fprintf(&buf, "%s", result.Interface())
+	for _, resultVal := range resultVals {
+		fmt.Fprintf(&buf, "%s", resultVal.Interface())
 	}
 	writer.Header().Add("Content-Type", "text/plain; charset=utf-8")
 	writer.Write(buf.Bytes())
 	return nil
 }
 
-var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
+var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	if resultErr != nil {
+		return resultErr
+	}
 	var buf bytes.Buffer
-	for _, result := range results {
-		fmt.Fprintf(&buf, "%s", result.Interface())
+	for _, resultVal := range resultVals {
+		fmt.Fprintf(&buf, "%s", resultVal.Interface())
 	}
 	writer.Header().Add("Content-Type", "text/html; charset=utf-8")
 	writer.Write(buf.Bytes())

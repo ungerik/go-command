@@ -21,12 +21,11 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 		vars := mux.Vars(request)
 
-		results, err := f(vars)
+		resultVals, resultErr := f(vars)
 
+		err := resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
 		if err != nil {
 			handleErr(err, writer, request, errHandlers)
-		} else {
-			resultsWriter.WriteResults(args, vars, results, writer, request)
 		}
 	}
 }
@@ -73,12 +72,11 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 		}
 		vars[name] = value
 
-		results, err := f(vars)
+		resultVals, resultErr := f(vars)
 
+		err = resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
 		if err != nil {
 			handleErr(err, writer, request, errHandlers)
-		} else {
-			resultsWriter.WriteResults(args, vars, results, writer, request)
 		}
 	}
 }

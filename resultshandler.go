@@ -11,21 +11,13 @@ import (
 )
 
 type ResultsHandler interface {
-	HandleResults(args Args, argVals, resultVals []reflect.Value) error
-
-	// HandleError can handle err and return nil,
-	// or return err if it does not want to handle it.
-	HandleError(err error) error
+	HandleResults(args Args, argVals, resultVals []reflect.Value, resultErr error) error
 }
 
-type ResultsHandlerFunc func(args Args, argVals, resultVals []reflect.Value) error
+type ResultsHandlerFunc func(args Args, argVals, resultVals []reflect.Value, resultErr error) error
 
-func (f ResultsHandlerFunc) HandleResults(args Args, argVals, resultVals []reflect.Value) error {
-	return f(args, argVals, resultVals)
-}
-
-func (f ResultsHandlerFunc) HandleError(err error) error {
-	return err
+func (f ResultsHandlerFunc) HandleResults(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+	return f(args, argVals, resultVals, resultErr)
 }
 
 func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
@@ -46,7 +38,10 @@ func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
 }
 
 func PrintTo(writer io.Writer) ResultsHandlerFunc {
-	return func(args Args, argVals, resultVals []reflect.Value) error {
+	return func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+		if resultErr != nil {
+			return resultErr
+		}
 		r, err := resultsToInterfaces(resultVals)
 		if err != nil || len(r) == 0 {
 			return err
@@ -57,7 +52,10 @@ func PrintTo(writer io.Writer) ResultsHandlerFunc {
 }
 
 func PrintlnTo(writer io.Writer) ResultsHandlerFunc {
-	return func(args Args, argVals, resultVals []reflect.Value) error {
+	return func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+		if resultErr != nil {
+			return resultErr
+		}
 		r, err := resultsToInterfaces(resultVals)
 		if err != nil || len(r) == 0 {
 			return err
@@ -67,7 +65,10 @@ func PrintlnTo(writer io.Writer) ResultsHandlerFunc {
 	}
 }
 
-var Println ResultsHandlerFunc = func(args Args, argVals, resultVals []reflect.Value) error {
+var Println ResultsHandlerFunc = func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+	if resultErr != nil {
+		return resultErr
+	}
 	r, err := resultsToInterfaces(resultVals)
 	if err != nil || len(r) == 0 {
 		return err
@@ -77,7 +78,10 @@ var Println ResultsHandlerFunc = func(args Args, argVals, resultVals []reflect.V
 }
 
 func PrintlnWithPrefixTo(prefix string, writer io.Writer) ResultsHandlerFunc {
-	return func(args Args, argVals, resultVals []reflect.Value) error {
+	return func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+		if resultErr != nil {
+			return resultErr
+		}
 		r, err := resultsToInterfaces(resultVals)
 		if err != nil {
 			return err
@@ -89,7 +93,10 @@ func PrintlnWithPrefixTo(prefix string, writer io.Writer) ResultsHandlerFunc {
 }
 
 func PrintlnWithPrefix(prefix string) ResultsHandlerFunc {
-	return func(args Args, argVals, resultVals []reflect.Value) error {
+	return func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+		if resultErr != nil {
+			return resultErr
+		}
 		r, err := resultsToInterfaces(resultVals)
 		if err != nil {
 			return err
@@ -101,7 +108,10 @@ func PrintlnWithPrefix(prefix string) ResultsHandlerFunc {
 }
 
 func LogTo(logger *log.Logger) ResultsHandlerFunc {
-	return func(args Args, argVals, resultVals []reflect.Value) error {
+	return func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+		if resultErr != nil {
+			return resultErr
+		}
 		r, err := resultsToInterfaces(resultVals)
 		if err != nil || len(r) == 0 {
 			return err
@@ -112,7 +122,10 @@ func LogTo(logger *log.Logger) ResultsHandlerFunc {
 }
 
 func LogWithPrefixTo(prefix string, logger *log.Logger) ResultsHandlerFunc {
-	return func(args Args, argVals, resultVals []reflect.Value) error {
+	return func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+		if resultErr != nil {
+			return resultErr
+		}
 		r, err := resultsToInterfaces(resultVals)
 		if err != nil || len(r) == 0 {
 			return err
@@ -125,11 +138,10 @@ func LogWithPrefixTo(prefix string, logger *log.Logger) ResultsHandlerFunc {
 
 type PrintlnText string
 
-func (t PrintlnText) HandleResults(args Args, argVals, resultVals []reflect.Value) error {
+func (t PrintlnText) HandleResults(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
+	if resultErr != nil {
+		return resultErr
+	}
 	_, err := fmt.Println(t)
-	return err
-}
-
-func (t PrintlnText) HandleError(err error) error {
 	return err
 }
