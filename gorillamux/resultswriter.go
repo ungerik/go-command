@@ -13,12 +13,20 @@ import (
 
 type ResultsWriter interface {
 	WriteResults(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
+
+	// HandleError can handle err and return nil,
+	// or return err if it does not want to handle it.
+	HandleError(err error) error
 }
 
 type ResultsWriterFunc func(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error
 
 func (f ResultsWriterFunc) WriteResults(args command.Args, vars map[string]string, results []reflect.Value, writer http.ResponseWriter, request *http.Request) error {
 	return f(args, vars, results, writer, request)
+}
+
+func (f ResultsWriterFunc) HandleError(err error) error {
+	return err
 }
 
 func encodeJSON(response interface{}) ([]byte, error) {

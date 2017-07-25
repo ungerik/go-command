@@ -12,12 +12,20 @@ import (
 
 type ResultsHandler interface {
 	HandleResults(args Args, argVals, resultVals []reflect.Value) error
+
+	// HandleError can handle err and return nil,
+	// or return err if it does not want to handle it.
+	HandleError(err error) error
 }
 
 type ResultsHandlerFunc func(args Args, argVals, resultVals []reflect.Value) error
 
 func (f ResultsHandlerFunc) HandleResults(args Args, argVals, resultVals []reflect.Value) error {
 	return f(args, argVals, resultVals)
+}
+
+func (f ResultsHandlerFunc) HandleError(err error) error {
+	return err
 }
 
 func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
@@ -119,5 +127,9 @@ type PrintlnText string
 
 func (t PrintlnText) HandleResults(args Args, argVals, resultVals []reflect.Value) error {
 	_, err := fmt.Println(t)
+	return err
+}
+
+func (t PrintlnText) HandleError(err error) error {
 	return err
 }
