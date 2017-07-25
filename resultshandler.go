@@ -59,12 +59,57 @@ func PrintlnTo(writer io.Writer) ResultsHandlerFunc {
 	}
 }
 
+var Println ResultsHandlerFunc = func(args Args, argVals, resultVals []reflect.Value) error {
+	r, err := resultsToInterfaces(resultVals)
+	if err != nil || len(r) == 0 {
+		return err
+	}
+	_, err = fmt.Println(r...)
+	return err
+}
+
+func PrintlnWithPrefixTo(prefix string, writer io.Writer) ResultsHandlerFunc {
+	return func(args Args, argVals, resultVals []reflect.Value) error {
+		r, err := resultsToInterfaces(resultVals)
+		if err != nil {
+			return err
+		}
+		r = append([]interface{}{prefix}, r...)
+		_, err = fmt.Fprintln(writer, r...)
+		return err
+	}
+}
+
+func PrintlnWithPrefix(prefix string) ResultsHandlerFunc {
+	return func(args Args, argVals, resultVals []reflect.Value) error {
+		r, err := resultsToInterfaces(resultVals)
+		if err != nil {
+			return err
+		}
+		r = append([]interface{}{prefix}, r...)
+		_, err = fmt.Println(r...)
+		return err
+	}
+}
+
 func LogTo(logger *log.Logger) ResultsHandlerFunc {
 	return func(args Args, argVals, resultVals []reflect.Value) error {
 		r, err := resultsToInterfaces(resultVals)
 		if err != nil || len(r) == 0 {
 			return err
 		}
+		logger.Println(r...)
+		return nil
+	}
+}
+
+func LogWithPrefixTo(prefix string, logger *log.Logger) ResultsHandlerFunc {
+	return func(args Args, argVals, resultVals []reflect.Value) error {
+		r, err := resultsToInterfaces(resultVals)
+		if err != nil || len(r) == 0 {
+			return err
+		}
+		r = append([]interface{}{prefix}, r...)
 		logger.Println(r...)
 		return nil
 	}
