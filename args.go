@@ -170,7 +170,7 @@ func (def *ArgsDef) String() string {
 		if buf.Len() > 0 {
 			buf.WriteByte(' ')
 		}
-		fmt.Fprintf(&buf, "<%s:%s>", f.Name, f.Field.Type)
+		fmt.Fprintf(&buf, "<%s:%s>", f.Name, reflection.DerefType(f.Field.Type))
 	}
 	return buf.String()
 }
