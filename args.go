@@ -288,7 +288,7 @@ func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, resultsHandlers []Re
 			}
 		}
 
-		return nil
+		return resultErr
 	}, nil
 }
 
@@ -318,7 +318,7 @@ func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers [
 			}
 		}
 
-		return nil
+		return resultErr
 	}, nil
 }
 
