@@ -3,7 +3,6 @@ package command
 import (
 	"bytes"
 	"encoding/json"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,32 +28,32 @@ func CommandFuncErrResult(int0 int, str1 string, bool2 bool) error {
 	return assert.AnError
 }
 
-func Test_ArgsDef(t *testing.T) {
-	var commandArgsDef TestCommandArgsDef
-	stringCommandFunc, err := commandArgsDef.StringArgsFunc(CommandFunc, reflect.TypeOf(commandArgsDef), nil)
-	assert.NoError(t, err, "Args.StringArgsFunc")
-	passedArgsCollector = nil
-	err = stringCommandFunc("123", "Hello World!", "true")
-	assert.NoError(t, err, "command should return nil")
-	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
-	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
-	assert.Equal(t, true, passedArgsCollector.Bool2, "bool2")
+// func Test_ArgsDef(t *testing.T) {
+// 	var commandArgsDef TestCommandArgsDef
+// 	stringCommandFunc, err := commandArgsDef.StringArgsFunc(CommandFunc, reflect.TypeOf(commandArgsDef), nil)
+// 	assert.NoError(t, err, "Args.StringArgsFunc")
+// 	passedArgsCollector = nil
+// 	err = stringCommandFunc("123", "Hello World!", "true")
+// 	assert.NoError(t, err, "command should return nil")
+// 	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
+// 	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
+// 	assert.Equal(t, true, passedArgsCollector.Bool2, "bool2")
 
-	stringCommandFunc, err = commandArgsDef.StringArgsFunc(CommandFunc, reflect.TypeOf(commandArgsDef), nil)
-	assert.NoError(t, err, "Args.StringArgsFunc")
-	passedArgsCollector = nil
-	err = stringCommandFunc("123")
-	assert.NoError(t, err, "command should return nil")
-	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
-	assert.Equal(t, "", passedArgsCollector.Str1, "str1")
-	assert.Equal(t, false, passedArgsCollector.Bool2, "bool2")
+// 	stringCommandFunc, err = commandArgsDef.StringArgsFunc(CommandFunc, reflect.TypeOf(commandArgsDef), nil)
+// 	assert.NoError(t, err, "Args.StringArgsFunc")
+// 	passedArgsCollector = nil
+// 	err = stringCommandFunc("123")
+// 	assert.NoError(t, err, "command should return nil")
+// 	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
+// 	assert.Equal(t, "", passedArgsCollector.Str1, "str1")
+// 	assert.Equal(t, false, passedArgsCollector.Bool2, "bool2")
 
-	stringCommandFunc, err = commandArgsDef.StringArgsFunc(CommandFuncErrResult, reflect.TypeOf(commandArgsDef), nil)
-	assert.NoError(t, err, "Args.StringArgsFunc")
-	passedArgsCollector = nil
-	err = stringCommandFunc("123", "Hello World!", "true")
-	assert.Error(t, err, "command should return an error")
-}
+// 	stringCommandFunc, err = commandArgsDef.StringArgsFunc(CommandFuncErrResult, reflect.TypeOf(commandArgsDef), nil)
+// 	assert.NoError(t, err, "Args.StringArgsFunc")
+// 	passedArgsCollector = nil
+// 	err = stringCommandFunc("123", "Hello World!", "true")
+// 	assert.Error(t, err, "command should return an error")
+// }
 
 func Test_GetStringArgsFunc(t *testing.T) {
 	var commandArgsDef TestCommandArgsDef
