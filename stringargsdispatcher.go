@@ -10,9 +10,17 @@ import (
 	"github.com/pkg/errors"
 )
 
-var ErrNotFound = errors.New("command not found")
+type ConstError string
 
-const Default = ""
+func (e ConstError) Error() string {
+	return string(e)
+}
+
+const (
+	Default = ""
+
+	ErrNotFound = ConstError("command not found")
+)
 
 type stringArgsCommand struct {
 	command         string
