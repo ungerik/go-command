@@ -10,16 +10,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-type ConstError string
+type constError string
 
-func (e ConstError) Error() string {
+func (e constError) Error() string {
 	return string(e)
 }
 
 const (
 	Default = ""
 
-	ErrNotFound = ConstError("command not found")
+	ErrNotFound = constError("command not found")
 )
 
 type stringArgsCommand struct {
