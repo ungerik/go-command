@@ -179,11 +179,21 @@ func (disp StringArgsDispatcher) PrintCommands(appName string) {
 
 	for _, cmd := range list {
 		CommandUsageColor.Printf("  %s %s %s\n", appName, cmd.command, cmd.args)
-		if len(cmd.description) == 0 {
-			CommandDescriptionColor.Println()
-		} else {
+		if cmd.description != "" {
 			CommandDescriptionColor.Printf("      %s\n", cmd.description)
 		}
+		hasAnyArgDesc := false
+		for i := 0; i < cmd.args.NumArgs(); i++ {
+			if cmd.args.ArgDescription(i) != "" {
+				hasAnyArgDesc = true
+			}
+		}
+		if hasAnyArgDesc {
+			for i := 0; i < cmd.args.NumArgs(); i++ {
+				CommandDescriptionColor.Printf("          <%s:%s> %s\n", cmd.args.ArgName(i), cmd.args.ArgType(i), cmd.args.ArgDescription(i))
+			}
+		}
+		CommandDescriptionColor.Println()
 	}
 }
 
