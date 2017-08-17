@@ -45,6 +45,26 @@ var RespondJSON ResultsWriterFunc = func(args command.Args, vars map[string]stri
 	return nil
 }
 
+func RespondJSONField(fieldName string) ResultsWriterFunc {
+	return func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) (err error) {
+		if resultErr != nil {
+			return resultErr
+		}
+		var buf []byte
+		m := make(map[string]interface{})
+		if len(resultVals) > 0 {
+			m[fieldName] = resultVals[0].Interface()
+		}
+		buf, err = encodeJSON(m)
+		if err != nil {
+			return err
+		}
+		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		writer.Write(buf)
+		return nil
+	}
+}
+
 func encodeXML(response interface{}) ([]byte, error) {
 	if PrettyPrint {
 		return xml.MarshalIndent(response, "", PrettyPrintIndent)
@@ -93,4 +113,8 @@ var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]stri
 	writer.Header().Add("Content-Type", "text/html; charset=utf-8")
 	writer.Write(buf.Bytes())
 	return nil
+}
+
+var RespondNothing ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	return resultErr
 }
