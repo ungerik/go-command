@@ -65,11 +65,11 @@ func NewStringArgsDispatcher(loggers ...StringArgsCommandLogger) *StringArgsDisp
 
 func (disp StringArgsDispatcher) AddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
 	if err := checkCommandChars(command); err != nil {
-		return err
+		return errors.Wrapf(err, "Command '%s'", command)
 	}
 	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "Command '%s'", command)
 	}
 	disp.comm[command] = &stringArgsCommand{
 		command:         command,
@@ -92,7 +92,7 @@ func (disp StringArgsDispatcher) MustAddCommand(command, description string, com
 func (disp StringArgsDispatcher) AddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
 	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Default command")
 	}
 	disp.comm[Default] = &stringArgsCommand{
 		command:         Default,
@@ -136,7 +136,7 @@ func (disp StringArgsDispatcher) Dispatch(command string, args ...string) error 
 func (disp StringArgsDispatcher) MustDispatch(command string, args ...string) {
 	err := disp.Dispatch(command, args...)
 	if err != nil {
-		panic(err)
+		panic(errors.Wrapf(err, "Command '%s'", command))
 	}
 }
 
@@ -147,7 +147,7 @@ func (disp StringArgsDispatcher) DispatchDefaultCommand() error {
 func (disp StringArgsDispatcher) MustDispatchDefaultCommand() {
 	err := disp.DispatchDefaultCommand()
 	if err != nil {
-		panic(err)
+		panic(errors.Wrap(err, "Default command"))
 	}
 }
 
