@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"reflect"
 
 	"github.com/ungerik/go-reflection"
@@ -107,7 +106,11 @@ func PrintlnWithPrefix(prefix string) ResultsHandlerFunc {
 	}
 }
 
-func LogTo(logger *log.Logger) ResultsHandlerFunc {
+type Logger interface {
+	Printf(format string, args ...interface{})
+}
+
+func LogTo(logger Logger) ResultsHandlerFunc {
 	return func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
 		if resultErr != nil {
 			return resultErr
@@ -116,12 +119,12 @@ func LogTo(logger *log.Logger) ResultsHandlerFunc {
 		if err != nil || len(r) == 0 {
 			return err
 		}
-		logger.Println(r...)
+		logger.Printf(fmt.Sprintln(r...))
 		return nil
 	}
 }
 
-func LogWithPrefixTo(prefix string, logger *log.Logger) ResultsHandlerFunc {
+func LogWithPrefixTo(prefix string, logger Logger) ResultsHandlerFunc {
 	return func(args Args, argVals, resultVals []reflect.Value, resultErr error) error {
 		if resultErr != nil {
 			return resultErr
@@ -131,7 +134,7 @@ func LogWithPrefixTo(prefix string, logger *log.Logger) ResultsHandlerFunc {
 			return err
 		}
 		r = append([]interface{}{prefix}, r...)
-		logger.Println(r...)
+		logger.Printf(fmt.Sprintln(r...))
 		return nil
 	}
 }
