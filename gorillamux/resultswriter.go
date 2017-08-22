@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io"
 	"net/http"
 	"reflect"
 
+	"github.com/pkg/errors"
 	command "github.com/ungerik/go-command"
 )
 
@@ -43,6 +45,34 @@ var RespondJSON ResultsWriterFunc = func(args command.Args, vars map[string]stri
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writer.Write(buf)
 	return nil
+}
+
+// RespondBinary responds with contentType using the binary data from results of type []byte, string, or io.Reader.
+func RespondBinary(contentType string) ResultsWriterFunc {
+	return func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) (err error) {
+		if resultErr != nil {
+			return resultErr
+		}
+		var buf bytes.Buffer
+		for _, resultVal := range resultVals {
+			switch data := resultVal.Interface().(type) {
+			case []byte:
+				_, err = buf.Write(data)
+			case string:
+				_, err = buf.WriteString(data)
+			case io.Reader:
+				_, err = io.Copy(&buf, data)
+			default:
+				return errors.Errorf("RespondBinary does not support result type %s", resultVal.Type())
+			}
+			if err != nil {
+				return err
+			}
+		}
+		writer.Header().Set("Content-Type", contentType)
+		writer.Write(buf.Bytes())
+		return nil
+	}
 }
 
 func RespondJSONField(fieldName string) ResultsWriterFunc {
