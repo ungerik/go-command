@@ -1,6 +1,8 @@
 package gorillamux
 
 import (
+	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -91,5 +93,37 @@ func handleErr(err error, writer http.ResponseWriter, request *http.Request, err
 		for _, errHandler := range errHandlers {
 			errHandler.HandleError(err, writer, request)
 		}
+	}
+}
+
+func MapJSONBodyFieldsAsVars(mapping map[string]string) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
+		bodyFields := make(map[string]interface{})
+		err := json.NewDecoder(request.Body).Decode(bodyFields)
+		if err != nil {
+			httperr.BadRequest.ServeHTTP(writer, request)
+			return
+		}
+		vars := mux.Vars(request)
+		for bodyField, muxVar := range mapping {
+			if value, ok := bodyFields[bodyField]; ok {
+				vars[muxVar] = fmt.Sprint(value)
+			}
+		}
+	}
+}
+
+var JSONBodyFieldsAsVars http.HandlerFunc = func(writer http.ResponseWriter, request *http.Request) {
+	defer request.Body.Close()
+	bodyFields := make(map[string]interface{})
+	err := json.NewDecoder(request.Body).Decode(bodyFields)
+	if err != nil {
+		httperr.BadRequest.ServeHTTP(writer, request)
+		return
+	}
+	vars := mux.Vars(request)
+	for bodyField, value := range bodyFields {
+		vars[bodyField] = fmt.Sprint(value)
 	}
 }
