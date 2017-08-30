@@ -96,7 +96,7 @@ func handleErr(err error, writer http.ResponseWriter, request *http.Request, err
 	}
 }
 
-func MapJSONBodyFieldsAsVars(mapping map[string]string) http.HandlerFunc {
+func MapJSONBodyFieldsAsVars(mapping map[string]string, wrappedHandler http.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
 		bodyFields := make(map[string]interface{})
@@ -111,19 +111,23 @@ func MapJSONBodyFieldsAsVars(mapping map[string]string) http.HandlerFunc {
 				vars[muxVar] = fmt.Sprint(value)
 			}
 		}
+		wrappedHandler.ServeHTTP(writer, request)
 	}
 }
 
-var JSONBodyFieldsAsVars http.HandlerFunc = func(writer http.ResponseWriter, request *http.Request) {
-	defer request.Body.Close()
-	bodyFields := make(map[string]interface{})
-	err := json.NewDecoder(request.Body).Decode(bodyFields)
-	if err != nil {
-		httperr.BadRequest.ServeHTTP(writer, request)
-		return
-	}
-	vars := mux.Vars(request)
-	for bodyField, value := range bodyFields {
-		vars[bodyField] = fmt.Sprint(value)
+func JSONBodyFieldsAsVars(wrappedHandler http.Handler) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		defer request.Body.Close()
+		bodyFields := make(map[string]interface{})
+		err := json.NewDecoder(request.Body).Decode(bodyFields)
+		if err != nil {
+			httperr.BadRequest.ServeHTTP(writer, request)
+			return
+		}
+		vars := mux.Vars(request)
+		for bodyField, value := range bodyFields {
+			vars[bodyField] = fmt.Sprint(value)
+		}
+		wrappedHandler.ServeHTTP(writer, request)
 	}
 }
