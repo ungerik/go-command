@@ -40,7 +40,7 @@ func (f RequestBodyArgConverterFunc) RequestBodyToArg(request *http.Request) (na
 	return f(request)
 }
 
-func JSONRequestBodyAsArg(name string) RequestBodyArgConverterFunc {
+func RequestBodyAsArg(name string) RequestBodyArgConverterFunc {
 	return func(request *http.Request) (name, value string, err error) {
 		defer request.Body.Close()
 		b, err := ioutil.ReadAll(request.Body)
