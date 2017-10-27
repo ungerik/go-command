@@ -100,7 +100,7 @@ func MapJSONBodyFieldsAsVars(mapping map[string]string, wrappedHandler http.Hand
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
 		bodyFields := make(map[string]interface{})
-		err := json.NewDecoder(request.Body).Decode(bodyFields)
+		err := json.NewDecoder(request.Body).Decode(&bodyFields)
 		if err != nil {
 			httperr.BadRequest.ServeHTTP(writer, request)
 			return
@@ -119,7 +119,7 @@ func JSONBodyFieldsAsVars(wrappedHandler http.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
 		bodyFields := make(map[string]interface{})
-		err := json.NewDecoder(request.Body).Decode(bodyFields)
+		err := json.NewDecoder(request.Body).Decode(&bodyFields)
 		if err != nil {
 			httperr.BadRequest.ServeHTTP(writer, request)
 			return
