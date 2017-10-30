@@ -22,16 +22,24 @@ func (f ResultsHandlerFunc) HandleResults(args Args, argVals, resultVals []refle
 func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
 	r := make([]interface{}, len(results))
 	for i, result := range results {
+		resultInterface := result.Interface()
+
+		if b, ok := resultInterface.([]byte); ok {
+			r[i] = string(b)
+			continue
+		}
+
 		switch reflection.DerefValue(result).Kind() {
 		case reflect.Struct, reflect.Slice, reflect.Array:
-			b, err := json.MarshalIndent(result.Interface(), "", "  ")
+			b, err := json.MarshalIndent(resultInterface, "", "  ")
 			if err != nil {
 				return nil, err
 			}
 			r[i] = string(b)
-		default:
-			r[i] = result.Interface()
+			continue
 		}
+
+		r[i] = resultInterface
 	}
 	return r, nil
 }
