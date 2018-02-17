@@ -1,9 +1,9 @@
 package command
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/ungerik/go-reflection"
@@ -165,14 +165,14 @@ func (def *ArgsDef) String() string {
 	if !def.initialized {
 		return "ArgsDef not initialized"
 	}
-	var buf bytes.Buffer
+	var b strings.Builder
 	for _, f := range def.argStructFields {
-		if buf.Len() > 0 {
-			buf.WriteByte(' ')
+		if b.Len() > 0 {
+			b.WriteByte(' ')
 		}
-		fmt.Fprintf(&buf, "<%s:%s>", f.Name, reflection.DerefType(f.Field.Type))
+		fmt.Fprintf(&b, "<%s:%s>", f.Name, reflection.DerefType(f.Field.Type))
 	}
-	return buf.String()
+	return b.String()
 }
 
 func (def *ArgsDef) Init(outerArgs Args) error {
