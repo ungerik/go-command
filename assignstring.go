@@ -38,14 +38,16 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 
 	case reflect.Ptr:
 		ptr := destVal
-		if ptr.IsNil() {
-			ptr = reflect.New(destVal.Type().Elem())
+		if sourceStr != "nil" {
+			if ptr.IsNil() {
+				ptr = reflect.New(destVal.Type().Elem())
+			}
+			err := assignString(ptr.Elem(), sourceStr)
+			if err != nil {
+				return err
+			}
+			destVal.Set(ptr)
 		}
-		err := assignString(ptr.Elem(), sourceStr)
-		if err != nil {
-			return err
-		}
-		destVal.Set(ptr)
 		return nil
 
 	case reflect.Slice:
