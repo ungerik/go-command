@@ -166,7 +166,7 @@ func (disp *StringArgsDispatcher) DispatchCombinedCommandAndArgs(commandAndArgs 
 func (disp *StringArgsDispatcher) MustDispatchCombinedCommandAndArgs(commandAndArgs []string) (command string) {
 	command, err := disp.DispatchCombinedCommandAndArgs(commandAndArgs)
 	if err != nil {
-		panic(err)
+		panic(errors.Wrapf(err, "MustDispatchCombinedCommandAndArgs(%v)", commandAndArgs))
 	}
 	return command
 }
