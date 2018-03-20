@@ -11,7 +11,7 @@ import (
 type SuperCommandNotFound string
 
 func (s SuperCommandNotFound) Error() string {
-	return fmt.Sprintf("Super command '%s' not found", s)
+	return fmt.Sprintf("Super command '%s' not found", string(s))
 }
 
 type SuperStringArgsDispatcher struct {
