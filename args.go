@@ -188,11 +188,11 @@ func (def *ArgsDef) Init(outerArgs Args) error {
 	return nil
 }
 
-func (def *ArgsDef) checkFunctionSignature(commandFunc interface{}) (commandFuncVal reflect.Value, numArgs, errorIndex int, err error) {
+func (def *ArgsDef) checkFunctionSignature(commandFunc interface{}) (commandFuncVal reflect.Value, numArgs int, varidic bool, errorIndex int, err error) {
 	commandFuncVal = reflect.ValueOf(commandFunc)
 	commandFuncType := commandFuncVal.Type()
 	if commandFuncType.Kind() != reflect.Func {
-		return reflect.Value{}, -1, -1, errors.Errorf("expected a function or method, but got %s", commandFuncType)
+		return reflect.Value{}, -1, false, -1, errors.Errorf("expected a function or method, but got %s", commandFuncType)
 	}
 
 	numResults := commandFuncType.NumOut()
@@ -204,11 +204,11 @@ func (def *ArgsDef) checkFunctionSignature(commandFunc interface{}) (commandFunc
 
 	numArgs = len(def.argStructFields)
 	if numArgs != commandFuncType.NumIn() {
-		return reflect.Value{}, -1, -1, errors.Errorf("number of fields in command.Args struct (%d) does not match number of function arguments (%d)", numArgs, commandFuncType.NumIn())
+		return reflect.Value{}, -1, false, -1, errors.Errorf("number of fields in command.Args struct (%d) does not match number of function arguments (%d)", numArgs, commandFuncType.NumIn())
 	}
 	for i := range def.argStructFields {
 		if def.argStructFields[i].Field.Type != commandFuncType.In(i) {
-			return reflect.Value{}, -1, -1, errors.Errorf(
+			return reflect.Value{}, -1, false, -1, errors.Errorf(
 				"type of command.Args struct field '%s' is %s, which does not match function argument %d type %s",
 				def.argStructFields[i].Field.Name,
 				def.argStructFields[i].Field.Type,
@@ -218,7 +218,7 @@ func (def *ArgsDef) checkFunctionSignature(commandFunc interface{}) (commandFunc
 		}
 	}
 
-	return commandFuncVal, numArgs, errorIndex, nil
+	return commandFuncVal, numArgs, commandFuncType.IsVariadic(), errorIndex, nil
 }
 
 func (def *ArgsDef) getStringArgsVals(numArgs int, args []string) ([]reflect.Value, error) {
@@ -263,7 +263,7 @@ func (def *ArgsDef) getStringMapArgsVals(numArgs int, args map[string]string) ([
 }
 
 func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringArgsFunc, error) {
-	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	commandFuncVal, numArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,12 @@ func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, resultsHandlers []Re
 			return err
 		}
 
-		resultVals := commandFuncVal.Call(argVals)
+		var resultVals []reflect.Value
+		if varidic {
+			resultVals = commandFuncVal.CallSlice(argVals)
+		} else {
+			resultVals = commandFuncVal.Call(argVals)
+		}
 
 		var resultErr error
 		if errorIndex != -1 {
@@ -293,7 +298,7 @@ func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, resultsHandlers []Re
 }
 
 func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error) {
-	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	commandFuncVal, numArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +309,12 @@ func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers [
 			return err
 		}
 
-		resultVals := commandFuncVal.Call(argVals)
+		var resultVals []reflect.Value
+		if varidic {
+			resultVals = commandFuncVal.CallSlice(argVals)
+		} else {
+			resultVals = commandFuncVal.Call(argVals)
+		}
 
 		var resultErr error
 		if errorIndex != -1 {
@@ -323,7 +333,7 @@ func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers [
 }
 
 func (def *ArgsDef) StringArgsResultValuesFunc(commandFunc interface{}) (StringArgsResultValuesFunc, error) {
-	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	commandFuncVal, numArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +344,12 @@ func (def *ArgsDef) StringArgsResultValuesFunc(commandFunc interface{}) (StringA
 			return nil, err
 		}
 
-		resultVals := commandFuncVal.Call(argVals)
+		var resultVals []reflect.Value
+		if varidic {
+			resultVals = commandFuncVal.CallSlice(argVals)
+		} else {
+			resultVals = commandFuncVal.Call(argVals)
+		}
 
 		var resultErr error
 		if errorIndex != -1 {
@@ -346,7 +361,7 @@ func (def *ArgsDef) StringArgsResultValuesFunc(commandFunc interface{}) (StringA
 }
 
 func (def *ArgsDef) StringMapArgsResultValuesFunc(commandFunc interface{}) (StringMapArgsResultValuesFunc, error) {
-	commandFuncVal, numArgs, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	commandFuncVal, numArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +372,12 @@ func (def *ArgsDef) StringMapArgsResultValuesFunc(commandFunc interface{}) (Stri
 			return nil, err
 		}
 
-		resultVals := commandFuncVal.Call(argVals)
+		var resultVals []reflect.Value
+		if varidic {
+			resultVals = commandFuncVal.CallSlice(argVals)
+		} else {
+			resultVals = commandFuncVal.Call(argVals)
+		}
 
 		var resultErr error
 		if errorIndex != -1 {
