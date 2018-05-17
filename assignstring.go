@@ -100,6 +100,10 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 			}
 		}
 		return nil
+
+	case reflect.Func:
+		// We can't assign a string to a function, that's OK
+		return nil
 	}
 
 	// If all else fails, use fmt scanning
