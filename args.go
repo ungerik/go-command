@@ -166,7 +166,11 @@ func (def *ArgsDef) String() string {
 		return "ArgsDef not initialized"
 	}
 	var b strings.Builder
-	for _, f := range def.argStructFields {
+	for i, f := range def.argStructFields {
+		if f.Name == "_" && i == len(def.argStructFields)-1 {
+			// Don't show last field with name "_"
+			continue
+		}
 		if b.Len() > 0 {
 			b.WriteByte(' ')
 		}
