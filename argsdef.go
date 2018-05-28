@@ -1,6 +1,7 @@
 package command
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -166,6 +167,32 @@ func (def *ArgsDef) argValsFromMapArgs(numFuncArgs int, callerArgs map[string]in
 }
 
 func (def *ArgsDef) argValsFromJSON(numFuncArgs int, callerArgs []byte) ([]reflect.Value, error) {
+	callerArgs = bytes.TrimSpace(callerArgs)
+	if len(callerArgs) < 2 {
+		return nil, errors.Errorf("Invalid JSON: '%s'", string(callerArgs))
+	}
+
+	// Handle JSON array
+	if callerArgs[0] == '[' {
+		var callerArray []interface{}
+		err := json.Unmarshal(callerArgs, &callerArray)
+		if err != nil {
+			return nil, err
+		}
+		argsStruct := reflect.New(def.outerStructType).Elem()
+		argVals := make([]reflect.Value, numFuncArgs)
+		for i := range argVals {
+			argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
+			if i < len(callerArray) {
+				err := assignAny(argVals[i], callerArray[i])
+				if err != nil {
+					return nil, err
+				}
+			}
+		}
+		return argVals, nil
+	}
+
 	// Unmarshal callerArgs JSON to new args struct
 	argsStructPtr := reflect.New(def.outerStructType)
 	err := json.Unmarshal(callerArgs, argsStructPtr.Interface())
