@@ -5,7 +5,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/pkg/errors"
+	"github.com/domonda/errors"
 )
 
 type SuperCommandNotFound string

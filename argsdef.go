@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/domonda/errors"
 	reflection "github.com/ungerik/go-reflection"
 )
 

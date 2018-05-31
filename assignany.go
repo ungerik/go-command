@@ -3,7 +3,7 @@ package command
 import (
 	"reflect"
 
-	"github.com/pkg/errors"
+	"github.com/domonda/errors"
 	reflection "github.com/ungerik/go-reflection"
 )
 

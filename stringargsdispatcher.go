@@ -7,7 +7,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/pkg/errors"
+	"github.com/domonda/errors"
 )
 
 type constError string

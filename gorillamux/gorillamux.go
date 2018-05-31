@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/pkg/errors"
+	"github.com/domonda/errors"
 
 	"github.com/ungerik/go-command"
 	"github.com/ungerik/go-httpx/httperr"

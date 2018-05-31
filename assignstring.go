@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/pkg/errors"
+	"github.com/domonda/errors"
 )
 
 func assignString(destVal reflect.Value, sourceStr string) error {

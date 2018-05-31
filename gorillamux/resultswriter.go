@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/pkg/errors"
+	"github.com/domonda/errors"
 	command "github.com/ungerik/go-command"
 )
 
