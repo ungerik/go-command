@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/domonda/errors"
+	"github.com/gorilla/mux"
 
 	"github.com/ungerik/go-command"
 	"github.com/ungerik/go-httpx/httperr"
@@ -18,7 +18,7 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
-			defer handleErr(httperr.Recover(), writer, request, errHandlers)
+			defer recoverAndHandlePanic(writer, request, errHandlers)
 		}
 
 		vars := mux.Vars(request)
@@ -26,9 +26,7 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 		resultVals, resultErr := f(vars)
 
 		err := resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
-		if err != nil {
-			handleErr(err, writer, request, errHandlers)
-		}
+		handleErr(err, writer, request, errHandlers)
 	}
 }
 
@@ -58,7 +56,7 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
-			defer handleErr(httperr.Recover(), writer, request, errHandlers)
+			defer recoverAndHandlePanic(writer, request, errHandlers)
 		}
 
 		vars := mux.Vars(request)
@@ -77,9 +75,7 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 		resultVals, resultErr := f(vars)
 
 		err = resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
-		if err != nil {
-			handleErr(err, writer, request, errHandlers)
-		}
+		handleErr(err, writer, request, errHandlers)
 	}
 }
 
@@ -88,12 +84,17 @@ func handleErr(err error, writer http.ResponseWriter, request *http.Request, err
 		return
 	}
 	if len(errHandlers) == 0 {
+		fmt.Println(3)
 		DefaultErrorHandler.HandleError(err, writer, request)
 	} else {
 		for _, errHandler := range errHandlers {
 			errHandler.HandleError(err, writer, request)
 		}
 	}
+}
+
+func recoverAndHandlePanic(writer http.ResponseWriter, request *http.Request, errHandlers []httperr.Handler) {
+	handleErr(httperr.AsError(recover()), writer, request, errHandlers)
 }
 
 func MapJSONBodyFieldsAsVars(mapping map[string]string, wrappedHandler http.Handler) http.HandlerFunc {
