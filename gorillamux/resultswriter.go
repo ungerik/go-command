@@ -155,6 +155,23 @@ var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]stri
 	return nil
 }
 
+var RespondDetectContentType ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	if resultErr != nil {
+		return resultErr
+	}
+	if len(resultVals) != 1 {
+		return errors.Errorf("RespondDetectContentType needs 1 result, got %d", len(resultVals))
+	}
+	data, ok := resultVals[0].Interface().([]byte)
+	if !ok {
+		return errors.Errorf("RespondDetectContentType needs []byte result, got %T", resultVals[0].Interface())
+	}
+
+	writer.Header().Add("Content-Type", http.DetectContentType(data))
+	writer.Write(data)
+	return nil
+}
+
 var RespondNothing ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 	return resultErr
 }
