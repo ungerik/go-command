@@ -18,7 +18,9 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
-			defer recoverAndHandlePanic(writer, request, errHandlers)
+			defer func() {
+				handleErr(httperr.AsError(recover()), writer, request, errHandlers)
+			}()
 		}
 
 		vars := mux.Vars(request)
@@ -56,7 +58,9 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
-			defer recoverAndHandlePanic(writer, request, errHandlers)
+			defer func() {
+				handleErr(httperr.AsError(recover()), writer, request, errHandlers)
+			}()
 		}
 
 		vars := mux.Vars(request)
@@ -91,10 +95,6 @@ func handleErr(err error, writer http.ResponseWriter, request *http.Request, err
 			errHandler.HandleError(err, writer, request)
 		}
 	}
-}
-
-func recoverAndHandlePanic(writer http.ResponseWriter, request *http.Request, errHandlers []httperr.Handler) {
-	handleErr(httperr.AsError(recover()), writer, request, errHandlers)
 }
 
 func MapJSONBodyFieldsAsVars(mapping map[string]string, wrappedHandler http.Handler) http.HandlerFunc {

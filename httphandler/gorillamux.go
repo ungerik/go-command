@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/domonda/errors"
+	"github.com/gorilla/mux"
 
 	"github.com/ungerik/go-command"
 	"github.com/ungerik/go-httpx/httperr"
@@ -16,7 +16,9 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
-			defer handleErr(httperr.Recover(), writer, request, errHandlers)
+			defer func() {
+				handleErr(httperr.AsError(recover()), writer, request, errHandlers)
+			}()
 		}
 
 		vars := mux.Vars(request)
@@ -56,7 +58,9 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
-			defer handleErr(httperr.Recover(), writer, request, errHandlers)
+			defer func() {
+				handleErr(httperr.AsError(recover()), writer, request, errHandlers)
+			}()
 		}
 
 		vars := mux.Vars(request)
