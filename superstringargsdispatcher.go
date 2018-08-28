@@ -166,14 +166,14 @@ func (disp *SuperStringArgsDispatcher) PrintCommands(appName string) {
 			CommandDescriptionColor.Printf("      %s\n", cmd.description)
 		}
 		hasAnyArgDesc := false
-		for i := 0; i < cmd.args.NumArgs(); i++ {
-			if cmd.args.ArgDescription(i) != "" {
+		for _, arg := range cmd.args.Args() {
+			if arg.Description != "" {
 				hasAnyArgDesc = true
 			}
 		}
 		if hasAnyArgDesc {
-			for i := 0; i < cmd.args.NumArgs(); i++ {
-				CommandDescriptionColor.Printf("          <%s:%s> %s\n", cmd.args.ArgName(i), cmd.args.ArgType(i), cmd.args.ArgDescription(i))
+			for _, arg := range cmd.args.Args() {
+				CommandDescriptionColor.Printf("          <%s:%s> %s\n", arg.Name, arg.Type, arg.Description)
 			}
 		}
 		CommandDescriptionColor.Println()

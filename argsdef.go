@@ -13,31 +13,24 @@ import (
 
 var WithoutArgs ArgsDef
 
+// ArgsDef implements Args
 type ArgsDef struct {
-	outerArgs       Args
 	outerStructType reflect.Type
 	argStructFields []reflection.StructFieldName
+	argInfos        []Arg
 	initialized     bool
 }
 
 func (def *ArgsDef) NumArgs() int {
-	return len(def.argStructFields)
+	return len(def.argInfos)
 }
 
-func (def *ArgsDef) ArgName(index int) string {
-	return def.argStructFields[index].Name
-}
-
-func (def *ArgsDef) ArgDescription(index int) string {
-	return def.ArgTag(index, ArgDescriptionTag)
+func (def *ArgsDef) Args() []Arg {
+	return def.argInfos
 }
 
 func (def *ArgsDef) ArgTag(index int, tag string) string {
 	return def.argStructFields[index].Field.Tag.Get(tag)
-}
-
-func (def *ArgsDef) ArgType(index int) reflect.Type {
-	return def.argStructFields[index].Field.Type
 }
 
 func (def *ArgsDef) String() string {
@@ -45,71 +38,51 @@ func (def *ArgsDef) String() string {
 		return "ArgsDef not initialized"
 	}
 	var b strings.Builder
-	for i, f := range def.argStructFields {
-		if f.Name == "_" && i == len(def.argStructFields)-1 {
-			// Don't show last field with name "_"
-			continue
-		}
+	for _, arg := range def.argInfos {
 		if b.Len() > 0 {
 			b.WriteByte(' ')
 		}
-		fmt.Fprintf(&b, "<%s:%s>", f.Name, reflection.DerefType(f.Field.Type))
+		fmt.Fprintf(&b, "<%s:%s>", arg.Name, reflection.DerefType(arg.Type))
 	}
 	return b.String()
 }
 
-func (def *ArgsDef) Init(outerArgs Args) error {
+// Init initializes ArgsDef with the reflection data from
+// outerStructPtr wich has to be the address of the struct
+// variable that embedds ArgsDef.
+func (def *ArgsDef) Init(outerStructPtr interface{}) error {
 	if def.initialized {
 		return nil
 	}
-	def.outerStructType = reflection.DerefType(reflect.TypeOf(outerArgs))
+
+	if _, ok := outerStructPtr.(Args); !ok {
+		return errors.Errorf("outerStructPtr of type %T does not implement interface Args", outerStructPtr)
+	}
+
+	def.outerStructType = reflection.DerefType(reflect.TypeOf(outerStructPtr))
 	if def.outerStructType.Kind() != reflect.Struct {
 		return errors.Errorf("ArgsDef must be contained in a struct, but outer type is %s", def.outerStructType)
 	}
+
 	def.argStructFields = reflection.FlatExportedStructFieldNames(def.outerStructType, ArgNameTag)
+
+	def.argInfos = make([]Arg, len(def.argStructFields))
+	for i := range def.argInfos {
+		def.argInfos[i].Name = def.argStructFields[i].Name
+		def.argInfos[i].Description = def.ArgTag(i, ArgDescriptionTag)
+		def.argInfos[i].Type = def.argStructFields[i].Field.Type
+	}
+
 	def.initialized = true
 	return nil
 }
 
-func (def *ArgsDef) checkFunctionSignature(commandFunc interface{}) (commandFuncVal reflect.Value, numArgs int, varidic bool, errorIndex int, err error) {
-	commandFuncVal = reflect.ValueOf(commandFunc)
-	commandFuncType := commandFuncVal.Type()
-	if commandFuncType.Kind() != reflect.Func {
-		return reflect.Value{}, -1, false, -1, errors.Errorf("expected a function or method, but got %s", commandFuncType)
-	}
-
-	numResults := commandFuncType.NumOut()
-	if numResults > 0 && commandFuncType.Out(numResults-1) == reflection.TypeOfError {
-		errorIndex = numResults - 1
-	} else {
-		errorIndex = -1
-	}
-
-	numArgs = len(def.argStructFields)
-	if numArgs != commandFuncType.NumIn() {
-		return reflect.Value{}, -1, false, -1, errors.Errorf("number of fields in command.Args struct (%d) does not match number of function arguments (%d)", numArgs, commandFuncType.NumIn())
-	}
-	for i := range def.argStructFields {
-		if def.argStructFields[i].Field.Type != commandFuncType.In(i) {
-			return reflect.Value{}, -1, false, -1, errors.Errorf(
-				"type of command.Args struct field '%s' is %s, which does not match function argument %d type %s",
-				def.argStructFields[i].Field.Name,
-				def.argStructFields[i].Field.Type,
-				i,
-				commandFuncType.In(i),
-			)
-		}
-	}
-
-	return commandFuncVal, numArgs, commandFuncType.IsVariadic(), errorIndex, nil
-}
-
-func (def *ArgsDef) argValsFromStringArgs(numFuncArgs int, callerArgs []string) ([]reflect.Value, error) {
+func (def *ArgsDef) argValsFromStringArgs(callerArgs []string) ([]reflect.Value, error) {
 	// Allocate a new args struct because we need addressable
 	// variables of struct field types to hold arg values.
 	// Instead of new individual variable use fields of args struct.
 	argsStruct := reflect.New(def.outerStructType).Elem()
-	argVals := make([]reflect.Value, numFuncArgs)
+	argVals := make([]reflect.Value, def.NumArgs())
 	numStringArgs := len(callerArgs)
 	for i := range argVals {
 		argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
@@ -124,12 +97,12 @@ func (def *ArgsDef) argValsFromStringArgs(numFuncArgs int, callerArgs []string) 
 	return argVals, nil
 }
 
-func (def *ArgsDef) argValsFromStringMapArgs(numFuncArgs int, callerArgs map[string]string) ([]reflect.Value, error) {
+func (def *ArgsDef) argValsFromStringMapArgs(callerArgs map[string]string) ([]reflect.Value, error) {
 	// Allocate a new args struct because we need addressable
 	// variables of struct field types to hold arg values.
 	// Instead of new individual variable use fields of args struct.
 	argsStruct := reflect.New(def.outerStructType).Elem()
-	argVals := make([]reflect.Value, numFuncArgs)
+	argVals := make([]reflect.Value, def.NumArgs())
 	for i := range argVals {
 		argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
 		argName := def.argStructFields[i].Name
@@ -145,12 +118,12 @@ func (def *ArgsDef) argValsFromStringMapArgs(numFuncArgs int, callerArgs map[str
 	return argVals, nil
 }
 
-func (def *ArgsDef) argValsFromMapArgs(numFuncArgs int, callerArgs map[string]interface{}) ([]reflect.Value, error) {
+func (def *ArgsDef) argValsFromMapArgs(callerArgs map[string]interface{}) ([]reflect.Value, error) {
 	// Allocate a new args struct because we need addressable
 	// variables of struct field types to hold arg values.
 	// Instead of new individual variable use fields of args struct.
 	argsStruct := reflect.New(def.outerStructType).Elem()
-	argVals := make([]reflect.Value, numFuncArgs)
+	argVals := make([]reflect.Value, def.NumArgs())
 	for i := range argVals {
 		argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
 		argName := def.argStructFields[i].Name
@@ -166,7 +139,7 @@ func (def *ArgsDef) argValsFromMapArgs(numFuncArgs int, callerArgs map[string]in
 	return argVals, nil
 }
 
-func (def *ArgsDef) argValsFromJSON(numFuncArgs int, callerArgs []byte) ([]reflect.Value, error) {
+func (def *ArgsDef) argValsFromJSON(callerArgs []byte) ([]reflect.Value, error) {
 	callerArgs = bytes.TrimSpace(callerArgs)
 	if len(callerArgs) < 2 {
 		return nil, errors.Errorf("Invalid JSON: '%s'", string(callerArgs))
@@ -180,7 +153,7 @@ func (def *ArgsDef) argValsFromJSON(numFuncArgs int, callerArgs []byte) ([]refle
 			return nil, err
 		}
 		argsStruct := reflect.New(def.outerStructType).Elem()
-		argVals := make([]reflect.Value, numFuncArgs)
+		argVals := make([]reflect.Value, def.NumArgs())
 		for i := range argVals {
 			argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
 			if i < len(callerArray) {
@@ -201,168 +174,129 @@ func (def *ArgsDef) argValsFromJSON(numFuncArgs int, callerArgs []byte) ([]refle
 	}
 
 	argsStruct := argsStructPtr.Elem()
-	argVals := make([]reflect.Value, numFuncArgs)
+	argVals := make([]reflect.Value, def.NumArgs())
 	for i := range argVals {
 		argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
 	}
 	return argVals, nil
 }
 
-func (def *ArgsDef) callFuncWithResultsHandlers(commandFuncVal reflect.Value, numArgs int, varidic bool, errorIndex int, argVals []reflect.Value, resultsHandlers []ResultsHandler) error {
-	var resultVals []reflect.Value
-	if varidic {
-		resultVals = commandFuncVal.CallSlice(argVals)
-	} else {
-		resultVals = commandFuncVal.Call(argVals)
-	}
-
-	var resultErr error
-	if errorIndex != -1 {
-		resultErr, _ = resultVals[errorIndex].Interface().(error)
-		resultVals = resultVals[:errorIndex]
-	}
-	for _, resultsHandler := range resultsHandlers {
-		err := resultsHandler.HandleResults(def.outerArgs, argVals, resultVals, resultErr)
-		if err != nil && err != resultErr {
-			return err
-		}
-	}
-
-	return resultErr
-}
-
-func (def *ArgsDef) callFuncAndReturnResults(commandFuncVal reflect.Value, numArgs int, varidic bool, errorIndex int, argVals []reflect.Value) ([]reflect.Value, error) {
-	var resultVals []reflect.Value
-	if varidic {
-		resultVals = commandFuncVal.CallSlice(argVals)
-	} else {
-		resultVals = commandFuncVal.Call(argVals)
-	}
-
-	var resultErr error
-	if errorIndex != -1 {
-		resultErr, _ = resultVals[errorIndex].Interface().(error)
-		resultVals = resultVals[:errorIndex]
-	}
-	return resultVals, resultErr
-}
-
 func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringArgsFunc, error) {
-	commandFuncVal, numFuncArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	dispatcher, err := newFuncDispatcher(def, commandFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(callerArgs ...string) error {
-		argVals, err := def.argValsFromStringArgs(numFuncArgs, callerArgs)
+		argVals, err := def.argValsFromStringArgs(callerArgs)
 		if err != nil {
 			return err
 		}
-		return def.callFuncWithResultsHandlers(commandFuncVal, numFuncArgs, varidic, errorIndex, argVals, resultsHandlers)
+		return dispatcher.callWithResultsHandlers(argVals, resultsHandlers)
 	}, nil
 }
 
 func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error) {
-	commandFuncVal, numFuncArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	dispatcher, err := newFuncDispatcher(def, commandFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(callerArgs map[string]string) (err error) {
-		argVals, err := def.argValsFromStringMapArgs(numFuncArgs, callerArgs)
+		argVals, err := def.argValsFromStringMapArgs(callerArgs)
 		if err != nil {
 			return err
 		}
-		return def.callFuncWithResultsHandlers(commandFuncVal, numFuncArgs, varidic, errorIndex, argVals, resultsHandlers)
+		return dispatcher.callWithResultsHandlers(argVals, resultsHandlers)
 	}, nil
 }
 
 func (def *ArgsDef) MapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (MapArgsFunc, error) {
-	commandFuncVal, numFuncArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	dispatcher, err := newFuncDispatcher(def, commandFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(callerArgs map[string]interface{}) (err error) {
-		argVals, err := def.argValsFromMapArgs(numFuncArgs, callerArgs)
+		argVals, err := def.argValsFromMapArgs(callerArgs)
 		if err != nil {
 			return err
 		}
-		return def.callFuncWithResultsHandlers(commandFuncVal, numFuncArgs, varidic, errorIndex, argVals, resultsHandlers)
+		return dispatcher.callWithResultsHandlers(argVals, resultsHandlers)
 	}, nil
 }
 
 func (def *ArgsDef) JSONArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (JSONArgsFunc, error) {
-	commandFuncVal, numFuncArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	dispatcher, err := newFuncDispatcher(def, commandFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(callerArgs []byte) (err error) {
-		argVals, err := def.argValsFromJSON(numFuncArgs, callerArgs)
+		argVals, err := def.argValsFromJSON(callerArgs)
 		if err != nil {
 			return err
 		}
-		return def.callFuncWithResultsHandlers(commandFuncVal, numFuncArgs, varidic, errorIndex, argVals, resultsHandlers)
+		return dispatcher.callWithResultsHandlers(argVals, resultsHandlers)
 	}, nil
 }
 
 func (def *ArgsDef) StringArgsResultValuesFunc(commandFunc interface{}) (StringArgsResultValuesFunc, error) {
-	commandFuncVal, numArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	dispatcher, err := newFuncDispatcher(def, commandFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(args []string) ([]reflect.Value, error) {
-		argVals, err := def.argValsFromStringArgs(numArgs, args)
+		argVals, err := def.argValsFromStringArgs(args)
 		if err != nil {
 			return nil, err
 		}
-		return def.callFuncAndReturnResults(commandFuncVal, numArgs, varidic, errorIndex, argVals)
+		return dispatcher.callAndReturnResults(argVals)
 	}, nil
 }
 
 func (def *ArgsDef) StringMapArgsResultValuesFunc(commandFunc interface{}) (StringMapArgsResultValuesFunc, error) {
-	commandFuncVal, numArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	dispatcher, err := newFuncDispatcher(def, commandFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(args map[string]string) ([]reflect.Value, error) {
-		argVals, err := def.argValsFromStringMapArgs(numArgs, args)
+		argVals, err := def.argValsFromStringMapArgs(args)
 		if err != nil {
 			return nil, err
 		}
-		return def.callFuncAndReturnResults(commandFuncVal, numArgs, varidic, errorIndex, argVals)
+		return dispatcher.callAndReturnResults(argVals)
 	}, nil
 }
 
 func (def *ArgsDef) MapArgsResultValuesFunc(commandFunc interface{}) (MapArgsResultValuesFunc, error) {
-	commandFuncVal, numArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	dispatcher, err := newFuncDispatcher(def, commandFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(args map[string]interface{}) ([]reflect.Value, error) {
-		argVals, err := def.argValsFromMapArgs(numArgs, args)
+		argVals, err := def.argValsFromMapArgs(args)
 		if err != nil {
 			return nil, err
 		}
-		return def.callFuncAndReturnResults(commandFuncVal, numArgs, varidic, errorIndex, argVals)
+		return dispatcher.callAndReturnResults(argVals)
 	}, nil
 }
 
 func (def *ArgsDef) JSONArgsResultValuesFunc(commandFunc interface{}) (JSONArgsResultValuesFunc, error) {
-	commandFuncVal, numArgs, varidic, errorIndex, err := def.checkFunctionSignature(commandFunc)
+	dispatcher, err := newFuncDispatcher(def, commandFunc)
 	if err != nil {
 		return nil, err
 	}
 
 	return func(args []byte) ([]reflect.Value, error) {
-		argVals, err := def.argValsFromJSON(numArgs, args)
+		argVals, err := def.argValsFromJSON(args)
 		if err != nil {
 			return nil, err
 		}
-		return def.callFuncAndReturnResults(commandFuncVal, numArgs, varidic, errorIndex, argVals)
+		return dispatcher.callAndReturnResults(argVals)
 	}, nil
 }

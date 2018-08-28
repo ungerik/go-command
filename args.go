@@ -6,9 +6,13 @@ import (
 
 type Args interface {
 	NumArgs() int
-	ArgName(index int) string
-	ArgDescription(index int) string
+	Args() []Arg
 	ArgTag(index int, tag string) string
-	ArgType(index int) reflect.Type
 	String() string
+}
+
+type Arg struct {
+	Name        string
+	Description string
+	Type        reflect.Type
 }

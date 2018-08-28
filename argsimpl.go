@@ -13,7 +13,7 @@ type MapArgsResultValuesFunc func(args map[string]interface{}) ([]reflect.Value,
 type JSONArgsResultValuesFunc func(args []byte) ([]reflect.Value, error)
 
 type ArgsImpl interface {
-	Init(outerArgs Args) error
+	Init(outerStructPtr interface{}) error
 
 	StringArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringArgsFunc, error)
 	StringMapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error)
