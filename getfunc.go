@@ -1,199 +1,193 @@
 package command
 
-func GetStringArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) (StringArgsFunc, error) {
+import "reflect"
+
+type StringArgsFunc func(args ...string) error
+type StringMapArgsFunc func(args map[string]string) error
+type MapArgsFunc func(args map[string]interface{}) error
+type JSONArgsFunc func(args []byte) error
+
+type StringArgsResultValuesFunc func(args []string) ([]reflect.Value, error)
+type StringMapArgsResultValuesFunc func(args map[string]string) ([]reflect.Value, error)
+type MapArgsResultValuesFunc func(args map[string]interface{}) ([]reflect.Value, error)
+type JSONArgsResultValuesFunc func(args []byte) ([]reflect.Value, error)
+
+type argsImpl interface {
+	Init(outerStructPtr interface{}) error
+
+	StringArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringArgsFunc, error)
+	StringMapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error)
+	MapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (MapArgsFunc, error)
+	JSONArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (JSONArgsFunc, error)
+
+	StringArgsResultValuesFunc(commandFunc interface{}) (StringArgsResultValuesFunc, error)
+	StringMapArgsResultValuesFunc(commandFunc interface{}) (StringMapArgsResultValuesFunc, error)
+	MapArgsResultValuesFunc(commandFunc interface{}) (MapArgsResultValuesFunc, error)
+	JSONArgsResultValuesFunc(commandFunc interface{}) (JSONArgsResultValuesFunc, error)
+}
+
+func GetStringArgsFunc(commandFunc interface{}, argsStructPtr interface{}, resultsHandlers ...ResultsHandler) (StringArgsFunc, error) {
 	// Note: here happens something unexpected!
-	// args implements the Args interface with ArgsDef.
-	// This looks like a virtual method call, but of course it is not.
-	// The first args is interpreted as (*ArgsDef) to do the method call.
-	// We can't use that to get the type that embedds ArgsDef,
-	// because ArgsDef knows nothing about the outer embedding type.
-	// But args, the first argument to the method, has all the type information,
-	// because here the complete outer embedding struct is passed.
-	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(args)
+	// argsStructPtr is the address of the struct that embedds ArgsDef which in turn implements argsImpl
+	// We need to pass the address of the outer args struct to ArgsDef.Init because ArgsDef doesn't
+	// know anything about the struct it is embedded in.
+	argsImpl := argsStructPtr.(argsImpl)
+	err := argsImpl.Init(argsStructPtr)
 	if err != nil {
 		return nil, err
 	}
 	return argsImpl.StringArgsFunc(commandFunc, resultsHandlers)
 }
 
-func MustGetStringArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) StringArgsFunc {
-	f, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
+func MustGetStringArgsFunc(commandFunc interface{}, argsStructPtr interface{}, resultsHandlers ...ResultsHandler) StringArgsFunc {
+	f, err := GetStringArgsFunc(commandFunc, argsStructPtr, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetStringMapArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) (StringMapArgsFunc, error) {
+func GetStringMapArgsFunc(commandFunc interface{}, argsStructPtr interface{}, resultsHandlers ...ResultsHandler) (StringMapArgsFunc, error) {
 	// Note: here happens something unexpected!
-	// args implements the Args interface with ArgsDef.
-	// This looks like a virtual method call, but of course it is not.
-	// The first args is interpreted as (*ArgsDef) to do the method call.
-	// We can't use that to get the type that embedds ArgsDef,
-	// because ArgsDef knows nothing about the outer embedding type.
-	// But args, the first argument to the method, has all the type information,
-	// because here the complete outer embedding struct is passed.
-	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(args)
+	// argsStructPtr is the address of the struct that embedds ArgsDef which in turn implements argsImpl
+	// We need to pass the address of the outer args struct to ArgsDef.Init because ArgsDef doesn't
+	// know anything about the struct it is embedded in.
+	argsImpl := argsStructPtr.(argsImpl)
+	err := argsImpl.Init(argsStructPtr)
 	if err != nil {
 		return nil, err
 	}
 	return argsImpl.StringMapArgsFunc(commandFunc, resultsHandlers)
 }
 
-func MustGetStringMapArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) StringMapArgsFunc {
-	f, err := GetStringMapArgsFunc(commandFunc, args, resultsHandlers...)
+func MustGetStringMapArgsFunc(commandFunc interface{}, argsStructPtr interface{}, resultsHandlers ...ResultsHandler) StringMapArgsFunc {
+	f, err := GetStringMapArgsFunc(commandFunc, argsStructPtr, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetMapArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) (MapArgsFunc, error) {
+func GetMapArgsFunc(commandFunc interface{}, argsStructPtr interface{}, resultsHandlers ...ResultsHandler) (MapArgsFunc, error) {
 	// Note: here happens something unexpected!
-	// args implements the Args interface with ArgsDef.
-	// This looks like a virtual method call, but of course it is not.
-	// The first args is interpreted as (*ArgsDef) to do the method call.
-	// We can't use that to get the type that embedds ArgsDef,
-	// because ArgsDef knows nothing about the outer embedding type.
-	// But args, the first argument to the method, has all the type information,
-	// because here the complete outer embedding struct is passed.
-	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(args)
+	// argsStructPtr is the address of the struct that embedds ArgsDef which in turn implements argsImpl
+	// We need to pass the address of the outer args struct to ArgsDef.Init because ArgsDef doesn't
+	// know anything about the struct it is embedded in.
+	argsImpl := argsStructPtr.(argsImpl)
+	err := argsImpl.Init(argsStructPtr)
 	if err != nil {
 		return nil, err
 	}
 	return argsImpl.MapArgsFunc(commandFunc, resultsHandlers)
 }
 
-func MustGetMapArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) MapArgsFunc {
-	f, err := GetMapArgsFunc(commandFunc, args, resultsHandlers...)
+func MustGetMapArgsFunc(commandFunc interface{}, argsStructPtr interface{}, resultsHandlers ...ResultsHandler) MapArgsFunc {
+	f, err := GetMapArgsFunc(commandFunc, argsStructPtr, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetJSONArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) (JSONArgsFunc, error) {
+func GetJSONArgsFunc(commandFunc interface{}, argsStructPtr interface{}, resultsHandlers ...ResultsHandler) (JSONArgsFunc, error) {
 	// Note: here happens something unexpected!
-	// args implements the Args interface with ArgsDef.
-	// This looks like a virtual method call, but of course it is not.
-	// The first args is interpreted as (*ArgsDef) to do the method call.
-	// We can't use that to get the type that embedds ArgsDef,
-	// because ArgsDef knows nothing about the outer embedding type.
-	// But args, the first argument to the method, has all the type information,
-	// because here the complete outer embedding struct is passed.
-	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(args)
+	// argsStructPtr is the address of the struct that embedds ArgsDef which in turn implements argsImpl
+	// We need to pass the address of the outer args struct to ArgsDef.Init because ArgsDef doesn't
+	// know anything about the struct it is embedded in.
+	argsImpl := argsStructPtr.(argsImpl)
+	err := argsImpl.Init(argsStructPtr)
 	if err != nil {
 		return nil, err
 	}
 	return argsImpl.JSONArgsFunc(commandFunc, resultsHandlers)
 }
 
-func MustGetJSONArgsFunc(commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) JSONArgsFunc {
-	f, err := GetJSONArgsFunc(commandFunc, args, resultsHandlers...)
+func MustGetJSONArgsFunc(commandFunc interface{}, argsStructPtr interface{}, resultsHandlers ...ResultsHandler) JSONArgsFunc {
+	f, err := GetJSONArgsFunc(commandFunc, argsStructPtr, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetStringArgsResultValuesFunc(commandFunc interface{}, args Args) (StringArgsResultValuesFunc, error) {
+func GetStringArgsResultValuesFunc(commandFunc interface{}, argsStructPtr interface{}) (StringArgsResultValuesFunc, error) {
 	// Note: here happens something unexpected!
-	// args implements the Args interface with ArgsDef.
-	// This looks like a virtual method call, but of course it is not.
-	// The first args is interpreted as (*ArgsDef) to do the method call.
-	// We can't use that to get the type that embedds ArgsDef,
-	// because ArgsDef knows nothing about the outer embedding type.
-	// But args, the first argument to the method, has all the type information,
-	// because here the complete outer embedding struct is passed.
-	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(args)
+	// argsStructPtr is the address of the struct that embedds ArgsDef which in turn implements argsImpl
+	// We need to pass the address of the outer args struct to ArgsDef.Init because ArgsDef doesn't
+	// know anything about the struct it is embedded in.
+	argsImpl := argsStructPtr.(argsImpl)
+	err := argsImpl.Init(argsStructPtr)
 	if err != nil {
 		return nil, err
 	}
 	return argsImpl.StringArgsResultValuesFunc(commandFunc)
 }
 
-func MustGetStringArgsResultValuesFunc(commandFunc interface{}, args Args) StringArgsResultValuesFunc {
-	f, err := GetStringArgsResultValuesFunc(commandFunc, args)
+func MustGetStringArgsResultValuesFunc(commandFunc interface{}, argsStructPtr interface{}) StringArgsResultValuesFunc {
+	f, err := GetStringArgsResultValuesFunc(commandFunc, argsStructPtr)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetStringMapArgsResultValuesFunc(commandFunc interface{}, args Args) (StringMapArgsResultValuesFunc, error) {
+func GetStringMapArgsResultValuesFunc(commandFunc interface{}, argsStructPtr interface{}) (StringMapArgsResultValuesFunc, error) {
 	// Note: here happens something unexpected!
-	// args implements the Args interface with ArgsDef.
-	// This looks like a virtual method call, but of course it is not.
-	// The first args is interpreted as (*ArgsDef) to do the method call.
-	// We can't use that to get the type that embedds ArgsDef,
-	// because ArgsDef knows nothing about the outer embedding type.
-	// But args, the first argument to the method, has all the type information,
-	// because here the complete outer embedding struct is passed.
-	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(args)
+	// argsStructPtr is the address of the struct that embedds ArgsDef which in turn implements argsImpl
+	// We need to pass the address of the outer args struct to ArgsDef.Init because ArgsDef doesn't
+	// know anything about the struct it is embedded in.
+	argsImpl := argsStructPtr.(argsImpl)
+	err := argsImpl.Init(argsStructPtr)
 	if err != nil {
 		return nil, err
 	}
 	return argsImpl.StringMapArgsResultValuesFunc(commandFunc)
 }
 
-func MustGetStringMapArgsResultValuesFunc(commandFunc interface{}, args Args) StringMapArgsResultValuesFunc {
-	f, err := GetStringMapArgsResultValuesFunc(commandFunc, args)
+func MustGetStringMapArgsResultValuesFunc(commandFunc interface{}, argsStructPtr interface{}) StringMapArgsResultValuesFunc {
+	f, err := GetStringMapArgsResultValuesFunc(commandFunc, argsStructPtr)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetMapArgsResultValuesFunc(commandFunc interface{}, args Args) (MapArgsResultValuesFunc, error) {
+func GetMapArgsResultValuesFunc(commandFunc interface{}, argsStructPtr interface{}) (MapArgsResultValuesFunc, error) {
 	// Note: here happens something unexpected!
-	// args implements the Args interface with ArgsDef.
-	// This looks like a virtual method call, but of course it is not.
-	// The first args is interpreted as (*ArgsDef) to do the method call.
-	// We can't use that to get the type that embedds ArgsDef,
-	// because ArgsDef knows nothing about the outer embedding type.
-	// But args, the first argument to the method, has all the type information,
-	// because here the complete outer embedding struct is passed.
-	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(args)
+	// argsStructPtr is the address of the struct that embedds ArgsDef which in turn implements argsImpl
+	// We need to pass the address of the outer args struct to ArgsDef.Init because ArgsDef doesn't
+	// know anything about the struct it is embedded in.
+	argsImpl := argsStructPtr.(argsImpl)
+	err := argsImpl.Init(argsStructPtr)
 	if err != nil {
 		return nil, err
 	}
 	return argsImpl.MapArgsResultValuesFunc(commandFunc)
 }
 
-func MustGetMapArgsResultValuesFunc(commandFunc interface{}, args Args) MapArgsResultValuesFunc {
-	f, err := GetMapArgsResultValuesFunc(commandFunc, args)
+func MustGetMapArgsResultValuesFunc(commandFunc interface{}, argsStructPtr interface{}) MapArgsResultValuesFunc {
+	f, err := GetMapArgsResultValuesFunc(commandFunc, argsStructPtr)
 	if err != nil {
 		panic(err)
 	}
 	return f
 }
 
-func GetJSONArgsResultValuesFunc(commandFunc interface{}, args Args) (JSONArgsResultValuesFunc, error) {
+func GetJSONArgsResultValuesFunc(commandFunc interface{}, argsStructPtr interface{}) (JSONArgsResultValuesFunc, error) {
 	// Note: here happens something unexpected!
-	// args implements the Args interface with ArgsDef.
-	// This looks like a virtual method call, but of course it is not.
-	// The first args is interpreted as (*ArgsDef) to do the method call.
-	// We can't use that to get the type that embedds ArgsDef,
-	// because ArgsDef knows nothing about the outer embedding type.
-	// But args, the first argument to the method, has all the type information,
-	// because here the complete outer embedding struct is passed.
-	argsImpl := args.(ArgsImpl)
-	err := argsImpl.Init(args)
+	// argsStructPtr is the address of the struct that embedds ArgsDef which in turn implements argsImpl
+	// We need to pass the address of the outer args struct to ArgsDef.Init because ArgsDef doesn't
+	// know anything about the struct it is embedded in.
+	argsImpl := argsStructPtr.(argsImpl)
+	err := argsImpl.Init(argsStructPtr)
 	if err != nil {
 		return nil, err
 	}
 	return argsImpl.JSONArgsResultValuesFunc(commandFunc)
 }
 
-func MustGetJSONArgsResultValuesFunc(commandFunc interface{}, args Args) JSONArgsResultValuesFunc {
-	f, err := GetJSONArgsResultValuesFunc(commandFunc, args)
+func MustGetJSONArgsResultValuesFunc(commandFunc interface{}, argsStructPtr interface{}) JSONArgsResultValuesFunc {
+	f, err := GetJSONArgsResultValuesFunc(commandFunc, argsStructPtr)
 	if err != nil {
 		panic(err)
 	}
