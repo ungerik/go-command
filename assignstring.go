@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/domonda/errors"
+	fs "github.com/ungerik/go-fs"
 )
 
 func assignString(destVal reflect.Value, sourceStr string) error {
@@ -20,6 +21,10 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 
 	case *[]byte:
 		*v = []byte(sourceStr)
+		return nil
+
+	case *fs.FileReader:
+		*v = fs.File(sourceStr)
 		return nil
 
 	case encoding.TextUnmarshaler:
