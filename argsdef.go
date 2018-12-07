@@ -33,6 +33,7 @@ func (def *ArgsDef) ArgTag(index int, tag string) string {
 	return def.argStructFields[index].Field.Tag.Get(tag)
 }
 
+// String implements the fmt.Stringer interface.
 func (def *ArgsDef) String() string {
 	if !def.initialized {
 		return "ArgsDef not initialized"
