@@ -8,27 +8,37 @@ import (
 	"strings"
 
 	"github.com/domonda/errors"
+
 	fs "github.com/ungerik/go-fs"
 )
 
 func assignString(destVal reflect.Value, sourceStr string) error {
 	destPtr := destVal.Addr().Interface()
 
-	switch v := destPtr.(type) {
+	switch dest := destPtr.(type) {
 	case *string:
-		*v = sourceStr
-		return nil
-
-	case *[]byte:
-		*v = []byte(sourceStr)
-		return nil
-
-	case *fs.FileReader:
-		*v = fs.File(sourceStr)
+		*dest = sourceStr
 		return nil
 
 	case encoding.TextUnmarshaler:
-		return v.UnmarshalText([]byte(sourceStr))
+		return dest.UnmarshalText([]byte(sourceStr))
+
+	case *fs.FileReader:
+		*dest = fs.File(sourceStr)
+		return nil
+
+	case json.Unmarshaler:
+		return dest.UnmarshalJSON([]byte(sourceStr))
+
+	case *map[string]interface{}:
+		return json.Unmarshal([]byte(sourceStr), dest)
+
+	case *[]interface{}:
+		return json.Unmarshal([]byte(sourceStr), dest)
+
+	case *[]byte:
+		*dest = []byte(sourceStr)
+		return nil
 	}
 
 	switch destVal.Kind() {
@@ -107,7 +117,7 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 		return nil
 
 	case reflect.Func:
-		// We can't assign a string to a function, that's OK
+		// We can't assign a string to a function, it's OK to ignore it
 		return nil
 	}
 
