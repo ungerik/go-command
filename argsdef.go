@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/domonda/errors"
+
 	reflection "github.com/ungerik/go-reflection"
 )
 
@@ -16,7 +17,7 @@ var WithoutArgs ArgsDef
 // ArgsDef implements Args
 type ArgsDef struct {
 	outerStructType reflect.Type
-	argStructFields []reflection.StructFieldName
+	argStructFields []reflection.NamedStructField
 	argInfos        []Arg
 	initialized     bool
 }
@@ -65,7 +66,7 @@ func (def *ArgsDef) Init(outerStructPtr interface{}) error {
 		return errors.Errorf("ArgsDef must be contained in a struct, but outer type is %s", def.outerStructType)
 	}
 
-	def.argStructFields = reflection.FlatExportedStructFieldNames(def.outerStructType, ArgNameTag)
+	def.argStructFields = reflection.FlatExportedNamedStructFields(def.outerStructType, ArgNameTag)
 
 	def.argInfos = make([]Arg, len(def.argStructFields))
 	for i := range def.argInfos {
