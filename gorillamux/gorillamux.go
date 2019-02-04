@@ -70,7 +70,7 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 			return
 		}
 		if _, exists := vars[name]; exists {
-			err = errors.Errorf("Argument '%s' already set by request URL path", name)
+			err = errors.Errorf("argument '%s' already set by request URL path", name)
 			handleErr(err, writer, request, errHandlers)
 			return
 		}

@@ -67,10 +67,10 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 
 	case reflect.Slice:
 		if !strings.HasPrefix(sourceStr, "[") {
-			return errors.Errorf("Slice value '%s' does not begin with '['", sourceStr)
+			return errors.Errorf("slice value '%s' does not begin with '['", sourceStr)
 		}
 		if !strings.HasSuffix(sourceStr, "]") {
-			return errors.Errorf("Slice value '%s' does not end with ']'", sourceStr)
+			return errors.Errorf("slice value '%s' does not end with ']'", sourceStr)
 		}
 		// elemSourceStrings := strings.Split(sourceStr[1:len(sourceStr)-1], ",")
 		sourceFields, err := sliceLiteralFields(sourceStr)
@@ -91,10 +91,10 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 
 	case reflect.Array:
 		if !strings.HasPrefix(sourceStr, "[") {
-			return errors.Errorf("Array value '%s' does not begin with '['", sourceStr)
+			return errors.Errorf("array value '%s' does not begin with '['", sourceStr)
 		}
 		if !strings.HasSuffix(sourceStr, "]") {
-			return errors.Errorf("Array value '%s' does not end with ']'", sourceStr)
+			return errors.Errorf("array value '%s' does not end with ']'", sourceStr)
 		}
 		// elemSourceStrings := strings.Split(sourceStr[1:len(sourceStr)-1], ",")
 		sourceFields, err := sliceLiteralFields(sourceStr)
@@ -104,7 +104,7 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 
 		count := len(sourceFields)
 		if count != destVal.Len() {
-			return errors.Errorf("Array value '%s' needs to have %d elements, but has %d", sourceStr, destVal.Len(), count)
+			return errors.Errorf("array value '%s' needs to have %d elements, but has %d", sourceStr, destVal.Len(), count)
 
 		}
 
@@ -129,10 +129,10 @@ func assignString(destVal reflect.Value, sourceStr string) error {
 
 func sliceLiteralFields(sourceStr string) (fields []string, err error) {
 	if !strings.HasPrefix(sourceStr, "[") {
-		return nil, errors.Errorf("Slice value '%s' does not begin with '['", sourceStr)
+		return nil, errors.Errorf("slice value '%s' does not begin with '['", sourceStr)
 	}
 	if !strings.HasSuffix(sourceStr, "]") {
-		return nil, errors.Errorf("Slice value '%s' does not end with ']'", sourceStr)
+		return nil, errors.Errorf("slice value '%s' does not end with ']'", sourceStr)
 	}
 	bracketDepth := 0
 	begin := 1
@@ -143,7 +143,7 @@ func sliceLiteralFields(sourceStr string) (fields []string, err error) {
 		case ']':
 			bracketDepth--
 			if bracketDepth < 0 {
-				return nil, errors.Errorf("Slice value '%s' has too many ']'", sourceStr)
+				return nil, errors.Errorf("slice value '%s' has too many ']'", sourceStr)
 			}
 			if bracketDepth == 0 && i-begin > 0 {
 				fields = append(fields, sourceStr[begin:i])

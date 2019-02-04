@@ -33,7 +33,7 @@ func (disp *SuperStringArgsDispatcher) AddSuperCommand(superCommand string) (sub
 		}
 	}
 	if _, exists := disp.sub[superCommand]; exists {
-		return nil, errors.Errorf("Super command already added: '%s'", superCommand)
+		return nil, errors.Errorf("super command already added: '%s'", superCommand)
 	}
 	subDisp = NewStringArgsDispatcher(disp.loggers...)
 	disp.sub[superCommand] = subDisp

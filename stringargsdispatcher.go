@@ -33,13 +33,13 @@ type stringArgsCommand struct {
 
 func checkCommandChars(command string) error {
 	if strings.IndexFunc(command, unicode.IsSpace) >= 0 {
-		return errors.Errorf("Command contains space characters: '%s'", command)
+		return errors.Errorf("command contains space characters: '%s'", command)
 	}
 	if strings.IndexFunc(command, unicode.IsGraphic) == -1 {
-		return errors.Errorf("Command contains non graphc characters: '%s'", command)
+		return errors.Errorf("command contains non graphc characters: '%s'", command)
 	}
 	if strings.ContainsAny(command, "|&;()<>") {
-		return errors.Errorf("Command contains invalid characters: '%s'", command)
+		return errors.Errorf("command contains invalid characters: '%s'", command)
 	}
 	return nil
 }

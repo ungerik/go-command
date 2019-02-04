@@ -144,7 +144,7 @@ func (def *ArgsDef) argValsFromMapArgs(callerArgs map[string]interface{}) ([]ref
 func (def *ArgsDef) argValsFromJSON(callerArgs []byte) ([]reflect.Value, error) {
 	callerArgs = bytes.TrimSpace(callerArgs)
 	if len(callerArgs) < 2 {
-		return nil, errors.Errorf("Invalid JSON: '%s'", string(callerArgs))
+		return nil, errors.Errorf("invalid JSON: '%s'", string(callerArgs))
 	}
 
 	// Handle JSON array
