@@ -10,6 +10,9 @@ import (
 	"reflect"
 
 	"github.com/domonda/errors"
+	"github.com/h2non/filetype"
+	"github.com/h2non/filetype/types"
+
 	command "github.com/ungerik/go-command"
 )
 
@@ -167,11 +170,21 @@ var RespondDetectContentType ResultsWriterFunc = func(args command.Args, vars ma
 		return errors.Errorf("RespondDetectContentType needs []byte result, got %T", resultVals[0].Interface())
 	}
 
-	writer.Header().Add("Content-Type", http.DetectContentType(data))
+	writer.Header().Add("Content-Type", DetectContentType(data))
 	writer.Write(data)
 	return nil
 }
 
 var RespondNothing ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 	return resultErr
+}
+
+// DetectContentType tries to detect the MIME content-type of data,
+// or returns "application/octet-stream" if none could be identified.
+func DetectContentType(data []byte) string {
+	kind, _ := filetype.Match(data)
+	if kind == types.Unknown {
+		return "application/octet-stream"
+	}
+	return kind.MIME.Value
 }
