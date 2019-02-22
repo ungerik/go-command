@@ -184,7 +184,7 @@ var RespondNothing ResultsWriterFunc = func(args command.Args, vars map[string]s
 func DetectContentType(data []byte) string {
 	kind, _ := filetype.Match(data)
 	if kind == types.Unknown {
-		return "application/octet-stream"
+		return http.DetectContentType(data)
 	}
 	return kind.MIME.Value
 }
