@@ -67,6 +67,9 @@ func NewStringArgsDispatcher(loggers ...StringArgsCommandLogger) *StringArgsDisp
 }
 
 func (disp *StringArgsDispatcher) AddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
+	if _, exists := disp.comm[command]; exists {
+		return errors.Errorf("Command '%s' already added", command)
+	}
 	if err := checkCommandChars(command); err != nil {
 		return errors.Wrapf(err, "Command '%s'", command)
 	}
