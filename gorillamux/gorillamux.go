@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/domonda/errors"
 	"github.com/gorilla/mux"
-
 	"github.com/ungerik/go-command"
 	"github.com/ungerik/go-httpx/httperr"
 )
@@ -24,6 +24,33 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 		}
 
 		vars := mux.Vars(request)
+
+		resultVals, resultErr := f(vars)
+
+		err := resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
+		handleErr(err, writer, request, errHandlers)
+	}
+}
+
+func CommandHandlerWithQueryParams(commandFunc interface{}, args command.Args, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
+	f := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
+
+	return func(writer http.ResponseWriter, request *http.Request) {
+		if CatchPanics {
+			defer func() {
+				handleErr(httperr.AsError(recover()), writer, request, errHandlers)
+			}()
+		}
+
+		vars := mux.Vars(request)
+
+		// Add query params as arguments by joining them together per key (query
+		// param names are not unique).
+		for k := range request.URL.Query() {
+			if len(request.URL.Query()[k]) > 0 && len(request.URL.Query()[k][0]) > 0 {
+				vars[k] = strings.Join(request.URL.Query()[k][:], ";")
+			}
+		}
 
 		resultVals, resultErr := f(vars)
 
