@@ -9,6 +9,7 @@ import (
 
 	"github.com/domonda/errors"
 	"github.com/gorilla/mux"
+
 	"github.com/ungerik/go-command"
 	"github.com/ungerik/go-httpx/httperr"
 )
@@ -25,9 +26,11 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 		vars := mux.Vars(request)
 
-		resultVals, resultErr := f(vars)
+		resultVals, err := f(vars)
 
-		err := resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
+		if resultsWriter != nil {
+			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
+		}
 		handleErr(err, writer, request, errHandlers)
 	}
 }
@@ -52,9 +55,11 @@ func CommandHandlerWithQueryParams(commandFunc interface{}, args command.Args, r
 			}
 		}
 
-		resultVals, resultErr := f(vars)
+		resultVals, err := f(vars)
 
-		err := resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
+		if resultsWriter != nil {
+			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
+		}
 		handleErr(err, writer, request, errHandlers)
 	}
 }
@@ -103,9 +108,11 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 		}
 		vars[name] = value
 
-		resultVals, resultErr := f(vars)
+		resultVals, err := f(vars)
 
-		err = resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
+		if resultsWriter != nil {
+			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
+		}
 		handleErr(err, writer, request, errHandlers)
 	}
 }
