@@ -14,7 +14,7 @@ import (
 
 func assignString(destVal reflect.Value, sourceStr string) (err error) {
 	defer func() {
-		err = errors.Wrapf(err, "assignString(%s)", sourceStr)
+		err = errors.Wrapf(err, "assignString(%s, %q)", destVal.Type(), sourceStr)
 	}()
 
 	destPtr := destVal.Addr().Interface()
