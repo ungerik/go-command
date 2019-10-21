@@ -132,7 +132,7 @@ var RespondPlaintext ResultsWriterFunc = func(args command.Args, vars map[string
 		if b, ok := result.([]byte); ok {
 			buf.Write(b)
 		} else {
-			fmt.Fprintf(&buf, "%s", result)
+			fmt.Fprint(&buf, result)
 		}
 	}
 	writer.Header().Add("Content-Type", "text/plain; charset=utf-8")
@@ -150,7 +150,7 @@ var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]stri
 		if b, ok := result.([]byte); ok {
 			buf.Write(b)
 		} else {
-			fmt.Fprintf(&buf, "%s", result)
+			fmt.Fprint(&buf, result)
 		}
 	}
 	writer.Header().Add("Content-Type", "text/html; charset=utf-8")
