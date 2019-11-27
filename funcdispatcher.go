@@ -5,20 +5,25 @@ import (
 	"reflect"
 
 	"github.com/domonda/errors"
+
 	reflection "github.com/ungerik/go-reflection"
 )
 
 type getReplacementValFunc func() reflect.Value
 
-var ReplaceArgTypes = map[reflect.Type]getReplacementValFunc{
-	reflect.TypeOf((*context.Context)(nil)).Elem(): func() reflect.Value { return reflect.ValueOf(context.TODO()) },
-}
+var (
+	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
 
-type argReplacement struct {
-	argIndex          int  // index of the argument
-	insert            bool // if the argument should be inserted or replaced
-	getReplacementVal getReplacementValFunc
-}
+	ReplaceArgTypes = map[reflect.Type]getReplacementValFunc{
+		contextType: func() reflect.Value { return reflect.ValueOf(context.TODO()) },
+	}
+)
+
+// type argReplacement struct {
+// 	argIndex          int  // index of the argument
+// 	insert            bool // if the argument should be inserted or replaced
+// 	getReplacementVal getReplacementValFunc
+// }
 
 func functionArgTypesWithoutReplaceables(funcType reflect.Type) (argTypes []reflect.Type) {
 	numArgs := funcType.NumIn()
@@ -38,8 +43,9 @@ type funcDispatcher struct {
 
 	funcVal  reflect.Value
 	funcType reflect.Type
+	// firstArgIsContext bool
 
-	argReplacements []argReplacement
+	// argReplacements []argReplacement
 
 	errorIndex int
 }
@@ -61,7 +67,7 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 		disp.errorIndex = -1
 	}
 
-	disp.argReplacements = nil // TODO
+	// disp.argReplacements = nil // TODO
 
 	funcArgTypes := functionArgTypesWithoutReplaceables(disp.funcType)
 	numArgsDef := len(argsDef.argStructFields)
@@ -84,6 +90,12 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 }
 
 func (disp *funcDispatcher) callWithResultsHandlers(argVals []reflect.Value, resultsHandlers []ResultsHandler) error {
+	// If first argument of function is context.Context and argVals have one missing arg
+	// add context.TODO() as first argVals element
+	if disp.funcType.NumIn() > 0 && disp.funcType.In(0) == contextType && len(argVals) == disp.funcType.NumIn()-1 {
+		argVals = append([]reflect.Value{reflect.ValueOf(context.TODO())}, argVals...)
+	}
+
 	var resultVals []reflect.Value
 	if disp.funcType.IsVariadic() {
 		resultVals = disp.funcVal.CallSlice(argVals)
