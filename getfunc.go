@@ -1,16 +1,19 @@
 package command
 
-import "reflect"
+import (
+	"context"
+	"reflect"
+)
 
-type StringArgsFunc func(args ...string) error
-type StringMapArgsFunc func(args map[string]string) error
-type MapArgsFunc func(args map[string]interface{}) error
-type JSONArgsFunc func(args []byte) error
+type StringArgsFunc func(ctx context.Context, args ...string) error
+type StringMapArgsFunc func(ctx context.Context, args map[string]string) error
+type MapArgsFunc func(ctx context.Context, args map[string]interface{}) error
+type JSONArgsFunc func(ctx context.Context, args []byte) error
 
-type StringArgsResultValuesFunc func(args []string) ([]reflect.Value, error)
-type StringMapArgsResultValuesFunc func(args map[string]string) ([]reflect.Value, error)
-type MapArgsResultValuesFunc func(args map[string]interface{}) ([]reflect.Value, error)
-type JSONArgsResultValuesFunc func(args []byte) ([]reflect.Value, error)
+type StringArgsResultValuesFunc func(ctx context.Context, args []string) ([]reflect.Value, error)
+type StringMapArgsResultValuesFunc func(ctx context.Context, args map[string]string) ([]reflect.Value, error)
+type MapArgsResultValuesFunc func(ctx context.Context, args map[string]interface{}) ([]reflect.Value, error)
+type JSONArgsResultValuesFunc func(ctx context.Context, args []byte) ([]reflect.Value, error)
 
 type argsImpl interface {
 	Init(outerStructPtr interface{}) error

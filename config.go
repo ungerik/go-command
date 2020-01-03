@@ -1,6 +1,11 @@
 package command
 
-import "github.com/fatih/color"
+import (
+	"context"
+	"reflect"
+
+	"github.com/fatih/color"
+)
 
 var (
 	// CommandUsageColor is the color in which the
@@ -13,4 +18,10 @@ var (
 
 	ArgNameTag        = "arg"
 	ArgDescriptionTag = "desc"
+)
+
+var (
+	typeOfError          = reflect.TypeOf((*error)(nil)).Elem()
+	typeOfContext        = reflect.TypeOf((*context.Context)(nil)).Elem()
+	typeOfEmptyInterface = reflect.TypeOf((*interface{})(nil)).Elem()
 )

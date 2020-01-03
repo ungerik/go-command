@@ -2,6 +2,7 @@ package command
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -10,9 +11,10 @@ import (
 
 type TestCommandArgsDef struct {
 	ArgsDef
-	Int0  int    `cmd:"int0"`
-	Str1  string `cmd:"str1"`
-	Bool2 bool   `cmd:"bool2"`
+
+	Int0  int    `arg:"int0"`
+	Str1  string `arg:"str1"`
+	Bool2 bool   `arg:"bool2"`
 }
 
 var passedArgsCollector *TestCommandArgsDef
@@ -60,7 +62,7 @@ func Test_GetStringArgsFunc(t *testing.T) {
 	stringCommandFunc, err := GetStringArgsFunc(CommandFunc, &commandArgsDef)
 	assert.NoError(t, err, "GetStringArgsFunc")
 	passedArgsCollector = nil
-	err = stringCommandFunc("123", "Hello World!", "true")
+	err = stringCommandFunc(context.Background(), "123", "Hello World!", "true")
 	assert.NoError(t, err, "command should return nil")
 	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
 	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
@@ -77,7 +79,7 @@ func Test_GetStringMapArgsFunc(t *testing.T) {
 		"bool2": "true",
 	}
 	passedArgsCollector = nil
-	err = stringCommandFunc(argsMap)
+	err = stringCommandFunc(context.Background(), argsMap)
 	assert.NoError(t, err, "command should return nil")
 	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")
 	assert.Equal(t, "Hello World!", passedArgsCollector.Str1, "str1")
@@ -106,7 +108,7 @@ func Test_WithResultHandler(t *testing.T) {
 	assert.NoError(t, err, "GetStringArgsFunc")
 
 	passedArgsCollector = nil
-	err = stringCommandFunc("123", "Hello World!", "true")
+	err = stringCommandFunc(context.Background(), "123", "Hello World!", "true")
 
 	// Check passed args
 	assert.Equal(t, 123, passedArgsCollector.Int0, "int0")

@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -128,7 +129,7 @@ func (disp *StringArgsDispatcher) HasDefaultCommnd() bool {
 	return found
 }
 
-func (disp *StringArgsDispatcher) Dispatch(command string, args ...string) error {
+func (disp *StringArgsDispatcher) Dispatch(ctx context.Context, command string, args ...string) error {
 	cmd, found := disp.comm[command]
 	if !found {
 		return ErrNotFound
@@ -136,18 +137,18 @@ func (disp *StringArgsDispatcher) Dispatch(command string, args ...string) error
 	for _, logger := range disp.loggers {
 		logger.LogStringArgsCommand(command, args)
 	}
-	return cmd.stringArgsFunc(args...)
+	return cmd.stringArgsFunc(ctx, args...)
 }
 
-func (disp *StringArgsDispatcher) MustDispatch(command string, args ...string) {
-	err := disp.Dispatch(command, args...)
+func (disp *StringArgsDispatcher) MustDispatch(ctx context.Context, command string, args ...string) {
+	err := disp.Dispatch(ctx, command, args...)
 	if err != nil {
 		panic(errors.Wrapf(err, "Command '%s'", command))
 	}
 }
 
 func (disp *StringArgsDispatcher) DispatchDefaultCommand() error {
-	return disp.Dispatch(Default)
+	return disp.Dispatch(context.Background(), Default)
 }
 
 func (disp *StringArgsDispatcher) MustDispatchDefaultCommand() {
@@ -157,17 +158,17 @@ func (disp *StringArgsDispatcher) MustDispatchDefaultCommand() {
 	}
 }
 
-func (disp *StringArgsDispatcher) DispatchCombinedCommandAndArgs(commandAndArgs []string) (command string, err error) {
+func (disp *StringArgsDispatcher) DispatchCombinedCommandAndArgs(ctx context.Context, commandAndArgs []string) (command string, err error) {
 	if len(commandAndArgs) == 0 {
 		return Default, disp.DispatchDefaultCommand()
 	}
 	command = commandAndArgs[0]
 	args := commandAndArgs[1:]
-	return command, disp.Dispatch(command, args...)
+	return command, disp.Dispatch(ctx, command, args...)
 }
 
-func (disp *StringArgsDispatcher) MustDispatchCombinedCommandAndArgs(commandAndArgs []string) (command string) {
-	command, err := disp.DispatchCombinedCommandAndArgs(commandAndArgs)
+func (disp *StringArgsDispatcher) MustDispatchCombinedCommandAndArgs(ctx context.Context, commandAndArgs []string) (command string) {
+	command, err := disp.DispatchCombinedCommandAndArgs(ctx, commandAndArgs)
 	if err != nil {
 		panic(errors.Wrapf(err, "MustDispatchCombinedCommandAndArgs(%v)", commandAndArgs))
 	}

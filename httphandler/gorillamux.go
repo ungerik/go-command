@@ -23,7 +23,7 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 		vars := mux.Vars(request)
 
-		resultVals, resultErr := f(vars)
+		resultVals, resultErr := f(request.Context(), vars)
 
 		err := resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
 		if err != nil {
@@ -76,7 +76,7 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 		}
 		vars[name] = value
 
-		resultVals, resultErr := f(vars)
+		resultVals, resultErr := f(request.Context(), vars)
 
 		err = resultsWriter.WriteResults(args, vars, resultVals, resultErr, writer, request)
 		if err != nil {

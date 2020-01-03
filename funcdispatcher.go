@@ -1,23 +1,18 @@
 package command
 
 import (
-	"context"
 	"reflect"
 
 	"github.com/domonda/errors"
-
-	reflection "github.com/ungerik/go-reflection"
 )
 
-type getReplacementValFunc func() reflect.Value
+// type getReplacementValFunc func() reflect.Value
 
-var (
-	contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
-
-	ReplaceArgTypes = map[reflect.Type]getReplacementValFunc{
-		contextType: func() reflect.Value { return reflect.ValueOf(context.TODO()) },
-	}
-)
+// var (
+// 	ReplaceArgTypes = map[reflect.Type]getReplacementValFunc{
+// 		typeOfContext: func() reflect.Value { return reflect.ValueOf(context.TODO()) },
+// 	}
+// )
 
 // type argReplacement struct {
 // 	argIndex          int  // index of the argument
@@ -30,10 +25,14 @@ func functionArgTypesWithoutReplaceables(funcType reflect.Type) (argTypes []refl
 	argTypes = make([]reflect.Type, 0, numArgs)
 	for i := 0; i < numArgs; i++ {
 		t := funcType.In(i)
-		_, hasPlaceholder := ReplaceArgTypes[t]
-		if !hasPlaceholder {
-			argTypes = append(argTypes, t)
+		if i == 0 && t == typeOfContext {
+			continue
 		}
+		// _, hasPlaceholder := ReplaceArgTypes[t]
+		// if !hasPlaceholder {
+		// 	argTypes = append(argTypes, t)
+		// }
+		argTypes = append(argTypes, t)
 	}
 	return argTypes
 }
@@ -43,11 +42,11 @@ type funcDispatcher struct {
 
 	funcVal  reflect.Value
 	funcType reflect.Type
-	// firstArgIsContext bool
 
 	// argReplacements []argReplacement
 
-	errorIndex int
+	firstArgIsContext bool
+	errorIndex        int
 }
 
 func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDispatcher, err error) {
@@ -60,8 +59,10 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 		return nil, errors.Errorf("expected a function or method, but got %s", disp.funcType)
 	}
 
+	disp.firstArgIsContext = disp.funcType.NumIn() > 0 && disp.funcType.In(0) == typeOfContext
+
 	numResults := disp.funcType.NumOut()
-	if numResults > 0 && disp.funcType.Out(numResults-1) == reflection.TypeOfError {
+	if numResults > 0 && disp.funcType.Out(numResults-1) == typeOfError {
 		disp.errorIndex = numResults - 1
 	} else {
 		disp.errorIndex = -1
@@ -90,12 +91,6 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 }
 
 func (disp *funcDispatcher) callWithResultsHandlers(argVals []reflect.Value, resultsHandlers []ResultsHandler) error {
-	// If first argument of function is context.Context and argVals have one missing arg
-	// add context.TODO() as first argVals element
-	if disp.funcType.NumIn() > 0 && disp.funcType.In(0) == contextType && len(argVals) == disp.funcType.NumIn()-1 {
-		argVals = append([]reflect.Value{reflect.ValueOf(context.TODO())}, argVals...)
-	}
-
 	var resultVals []reflect.Value
 	if disp.funcType.IsVariadic() {
 		resultVals = disp.funcVal.CallSlice(argVals)

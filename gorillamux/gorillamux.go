@@ -26,7 +26,7 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 		vars := mux.Vars(request)
 
-		resultVals, err := f(vars)
+		resultVals, err := f(request.Context(), vars)
 
 		if resultsWriter != nil {
 			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
@@ -55,7 +55,7 @@ func CommandHandlerWithQueryParams(commandFunc interface{}, args command.Args, r
 			}
 		}
 
-		resultVals, err := f(vars)
+		resultVals, err := f(request.Context(), vars)
 
 		if resultsWriter != nil {
 			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
@@ -108,7 +108,7 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 		}
 		vars[name] = value
 
-		resultVals, err := f(vars)
+		resultVals, err := f(request.Context(), vars)
 
 		if resultsWriter != nil {
 			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
