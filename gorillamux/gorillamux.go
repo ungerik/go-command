@@ -15,7 +15,7 @@ import (
 )
 
 func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
-	f := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
+	cmdFunc := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
@@ -26,7 +26,7 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 		vars := mux.Vars(request)
 
-		resultVals, err := f(request.Context(), vars)
+		resultVals, err := cmdFunc(request.Context(), vars)
 
 		if resultsWriter != nil {
 			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
@@ -36,7 +36,7 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 }
 
 func CommandHandlerWithQueryParams(commandFunc interface{}, args command.Args, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
-	f := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
+	cmdFunc := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
@@ -55,7 +55,7 @@ func CommandHandlerWithQueryParams(commandFunc interface{}, args command.Args, r
 			}
 		}
 
-		resultVals, err := f(request.Context(), vars)
+		resultVals, err := cmdFunc(request.Context(), vars)
 
 		if resultsWriter != nil {
 			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
@@ -86,7 +86,7 @@ func RequestBodyAsArg(name string) RequestBodyArgConverterFunc {
 }
 
 func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, commandFunc interface{}, args command.Args, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
-	f := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
+	cmdFunc := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
 
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
@@ -108,7 +108,7 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 		}
 		vars[name] = value
 
-		resultVals, err := f(request.Context(), vars)
+		resultVals, err := cmdFunc(request.Context(), vars)
 
 		if resultsWriter != nil {
 			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
@@ -122,7 +122,7 @@ func handleErr(err error, writer http.ResponseWriter, request *http.Request, err
 		return
 	}
 	if len(errHandlers) == 0 {
-		httperr.DefaultHandler.HandleError(err, writer, request)
+		httperr.Handle(err, writer, request)
 	} else {
 		for _, errHandler := range errHandlers {
 			errHandler.HandleError(err, writer, request)
