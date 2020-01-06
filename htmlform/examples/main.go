@@ -9,12 +9,13 @@ import (
 	"github.com/ungerik/go-command/htmlform"
 	"github.com/ungerik/go-fs"
 	"github.com/ungerik/go-httpx/httperr"
+	"github.com/ungerik/go-httpx/respond"
 )
 
 func main() {
 	httperr.DebugShowInternalErrorsInResponse = true
 
-	handler, err := htmlform.NewHandler(Example, &ExampleArgs, "Example Form")
+	handler, err := htmlform.NewHandler(Example, &ExampleArgs, "Example Form", respond.StaticHTML("<h1>Success!</h1>"))
 	if err != nil {
 		log.FatalAndPanic(err)
 	}

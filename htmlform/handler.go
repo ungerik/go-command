@@ -30,25 +30,27 @@ type formField struct {
 }
 
 type Handler struct {
-	cmdFunc          command.StringMapArgsFunc
-	args             command.Args
-	argValidators    map[string]types.ValidatErr
-	argOptions       map[string][]Option
-	argDefaultValues map[string]interface{}
-	form             struct {
+	cmdFunc         command.StringMapArgsFunc
+	args            command.Args
+	argValidator    map[string]types.ValidatErr
+	argOptions      map[string][]Option
+	argDefaultValue map[string]interface{}
+	form            struct {
 		Title            string
 		Fields           []formField
 		SubmitButtonText string
 	}
-	template *template.Template
+	template       *template.Template
+	successHandler http.Handler
 }
 
-func NewHandler(commandFunc interface{}, args command.Args, title string) (handler *Handler, err error) {
+func NewHandler(commandFunc interface{}, args command.Args, title string, successHandler http.Handler) (handler *Handler, err error) {
 	handler = &Handler{
-		args:             args,
-		argValidators:    make(map[string]types.ValidatErr),
-		argOptions:       make(map[string][]Option),
-		argDefaultValues: make(map[string]interface{}),
+		args:            args,
+		argValidator:    make(map[string]types.ValidatErr),
+		argOptions:      make(map[string][]Option),
+		argDefaultValue: make(map[string]interface{}),
+		successHandler:  successHandler,
 	}
 	handler.form.Title = title
 	handler.form.SubmitButtonText = "Submit"
@@ -63,8 +65,16 @@ func NewHandler(commandFunc interface{}, args command.Args, title string) (handl
 	return handler, nil
 }
 
+func MustNewHandler(commandFunc interface{}, args command.Args, title string, successHandler http.Handler) (handler *Handler) {
+	handler, err := NewHandler(commandFunc, args, title, successHandler)
+	if err != nil {
+		panic(err)
+	}
+	return handler
+}
+
 func (handler *Handler) SetArgValidator(arg string, validator types.ValidatErr) {
-	handler.argValidators[arg] = validator
+	handler.argValidator[arg] = validator
 }
 
 func (handler *Handler) SetArgOptions(arg string, options []Option) {
@@ -72,7 +82,7 @@ func (handler *Handler) SetArgOptions(arg string, options []Option) {
 }
 
 func (handler *Handler) SetArgDefaultValue(arg string, value interface{}) {
-	handler.argDefaultValues[arg] = value
+	handler.argDefaultValue[arg] = value
 }
 
 func (handler *Handler) SetSubmitButtonText(text string) {
@@ -107,7 +117,7 @@ func (handler *Handler) get(response http.ResponseWriter, request *http.Request)
 		if field.Label == "" {
 			field.Label = arg.Name
 		}
-		if defaultValue, ok := handler.argDefaultValues[arg.Name]; ok {
+		if defaultValue, ok := handler.argDefaultValue[arg.Name]; ok {
 			field.Value = fmt.Sprint(defaultValue)
 		}
 		options, isSelect := handler.argOptions[arg.Name]
@@ -169,4 +179,6 @@ func (handler *Handler) post(response http.ResponseWriter, request *http.Request
 		httperr.Handle(err, response, request)
 		return
 	}
+
+	handler.successHandler.ServeHTTP(response, request)
 }

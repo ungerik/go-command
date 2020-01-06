@@ -23,7 +23,7 @@ var FormTemplate = `
 				<label style="display: inline" for="{{.Name}}">{{.Label}}</label>
 			{{else if eq .Type "select"}}
 				<label for="{{.Name}}">{{.Label}}:</label>
-				<select id="{{.Name}}" name="{{.Name}}">
+				<select id="{{.Name}}" name="{{.Name}}" required>
 					{{$selectValue := .Value}}
 					{{range .Options}}
 						<option value="{{.Value}}" {{if eq (printf "%v" .Value) $selectValue}}selected{{end}}>{{.Label}}</option>
@@ -31,7 +31,7 @@ var FormTemplate = `
 				</select>
 			{{else}}
 				<label for="{{.Name}}">{{.Label}}:</label>
-				<input type="{{.Type}}" id="{{.Name}}" name="{{.Name}}" value="{{.Value}}"/>
+				<input type="{{.Type}}" id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" required/>
 			{{end}}
 		</div>
 	{{end}}
