@@ -31,7 +31,7 @@ var FormTemplate = `
 				</select>
 			{{else}}
 				<label for="{{.Name}}">{{.Label}}:</label>
-				<input type="{{.Type}}" id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" required/>
+				<input type="{{.Type}}" id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" size="40" required/>
 			{{end}}
 		</div>
 	{{end}}
