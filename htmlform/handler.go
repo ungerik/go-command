@@ -22,11 +22,12 @@ type Option struct {
 }
 
 type formField struct {
-	Name    string
-	Label   string
-	Type    string
-	Value   string
-	Options []Option
+	Name     string
+	Label    string
+	Type     string
+	Value    string
+	Required bool
+	Options  []Option
 }
 
 type Handler struct {
@@ -35,6 +36,7 @@ type Handler struct {
 	argValidator    map[string]types.ValidatErr
 	argOptions      map[string][]Option
 	argDefaultValue map[string]interface{}
+	argInputType    map[string]string
 	form            struct {
 		Title            string
 		Fields           []formField
@@ -50,6 +52,7 @@ func NewHandler(commandFunc interface{}, args command.Args, title string, succes
 		argValidator:    make(map[string]types.ValidatErr),
 		argOptions:      make(map[string][]Option),
 		argDefaultValue: make(map[string]interface{}),
+		argInputType:    make(map[string]string),
 		successHandler:  successHandler,
 	}
 	handler.form.Title = title
@@ -85,6 +88,10 @@ func (handler *Handler) SetArgDefaultValue(arg string, value interface{}) {
 	handler.argDefaultValue[arg] = value
 }
 
+func (handler *Handler) SetArgInputType(arg string, value string) {
+	handler.argInputType[arg] = value
+}
+
 func (handler *Handler) SetSubmitButtonText(text string) {
 	handler.form.SubmitButtonText = text
 }
@@ -110,9 +117,10 @@ func (handler *Handler) get(response http.ResponseWriter, request *http.Request)
 	handler.form.Fields = nil
 	for _, arg := range handler.args.Args() {
 		field := formField{
-			Name:  arg.Name,
-			Label: arg.Description,
-			Type:  "text",
+			Name:     arg.Name,
+			Label:    arg.Description,
+			Type:     "text",
+			Required: true,
 		}
 		if field.Label == "" {
 			field.Label = arg.Name
@@ -146,6 +154,10 @@ func (handler *Handler) get(response http.ResponseWriter, request *http.Request)
 			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 				field.Type = "number"
 			}
+		}
+
+		if inputType, ok := handler.argInputType[arg.Name]; ok {
+			field.Type = inputType
 		}
 
 		handler.form.Fields = append(handler.form.Fields, field)

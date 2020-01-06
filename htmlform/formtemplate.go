@@ -23,15 +23,18 @@ var FormTemplate = `
 				<label style="display: inline" for="{{.Name}}">{{.Label}}</label>
 			{{else if eq .Type "select"}}
 				<label for="{{.Name}}">{{.Label}}:</label>
-				<select id="{{.Name}}" name="{{.Name}}" required>
+				<select id="{{.Name}}" name="{{.Name}}" {{if .Required}}required{{end}}>
 					{{$selectValue := .Value}}
 					{{range .Options}}
 						<option value="{{.Value}}" {{if eq (printf "%v" .Value) $selectValue}}selected{{end}}>{{.Label}}</option>
 					{{end}}
 				</select>
+			{{else if eq .Type "textarea"}}
+				<label for="{{.Name}}">{{.Label}}:</label>
+				<textarea id="{{.Name}}" name="{{.Name}}" cols="40" rows="5" {{if .Required}}required{{end}}>{{.Value}}</textarea>
 			{{else}}
 				<label for="{{.Name}}">{{.Label}}:</label>
-				<input type="{{.Type}}" id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" size="40" required/>
+				<input type="{{.Type}}" id="{{.Name}}" name="{{.Name}}" value="{{.Value}}" size="40" {{if .Required}}required{{end}}/>
 			{{end}}
 		</div>
 	{{end}}
