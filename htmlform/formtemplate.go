@@ -15,7 +15,7 @@ var FormTemplate = `
 </head>
 <body>
 <h1>{{.Title}}</h1>
-<form action="." method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data">
 	{{range .Fields}}
 		<div>
 			{{if eq .Type "checkbox"}}
