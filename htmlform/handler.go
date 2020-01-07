@@ -34,6 +34,7 @@ type Handler struct {
 	cmdFunc         command.StringMapArgsFunc
 	args            command.Args
 	argValidator    map[string]types.ValidatErr
+	argRequired     map[string]bool
 	argOptions      map[string][]Option
 	argDefaultValue map[string]interface{}
 	argInputType    map[string]string
@@ -50,6 +51,7 @@ func NewHandler(commandFunc interface{}, args command.Args, title string, succes
 	handler = &Handler{
 		args:            args,
 		argValidator:    make(map[string]types.ValidatErr),
+		argRequired:     make(map[string]bool),
 		argOptions:      make(map[string][]Option),
 		argDefaultValue: make(map[string]interface{}),
 		argInputType:    make(map[string]string),
@@ -78,6 +80,10 @@ func MustNewHandler(commandFunc interface{}, args command.Args, title string, su
 
 func (handler *Handler) SetArgValidator(arg string, validator types.ValidatErr) {
 	handler.argValidator[arg] = validator
+}
+
+func (handler *Handler) SetArgRequired(arg string, required bool) {
+	handler.argRequired[arg] = required
 }
 
 func (handler *Handler) SetArgOptions(arg string, options []Option) {
@@ -127,6 +133,9 @@ func (handler *Handler) get(response http.ResponseWriter, request *http.Request)
 		}
 		if defaultValue, ok := handler.argDefaultValue[arg.Name]; ok {
 			field.Value = fmt.Sprint(defaultValue)
+		}
+		if required, ok := handler.argRequired[arg.Name]; ok {
+			field.Required = required
 		}
 		options, isSelect := handler.argOptions[arg.Name]
 		switch {
