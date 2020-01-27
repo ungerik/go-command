@@ -30,6 +30,7 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 			t, err := time.Parse(format, sourceStr)
 			if err == nil {
 				*dest = t
+				return nil
 			}
 		}
 		return fmt.Errorf("can't parse %q as time.Time using formats %#v", sourceStr, TimeFormats)
