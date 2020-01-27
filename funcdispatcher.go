@@ -1,9 +1,8 @@
 package command
 
 import (
+	"fmt"
 	"reflect"
-
-	"github.com/domonda/errors"
 )
 
 // type getReplacementValFunc func() reflect.Value
@@ -56,7 +55,7 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 	disp.funcVal = reflect.ValueOf(commandFunc)
 	disp.funcType = disp.funcVal.Type()
 	if disp.funcType.Kind() != reflect.Func {
-		return nil, errors.Errorf("expected a function or method, but got %s", disp.funcType)
+		return nil, fmt.Errorf("expected a function or method, but got %s", disp.funcType)
 	}
 
 	disp.firstArgIsContext = disp.funcType.NumIn() > 0 && disp.funcType.In(0) == typeOfContext
@@ -73,11 +72,11 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 	funcArgTypes := functionArgTypesWithoutReplaceables(disp.funcType)
 	numArgsDef := len(argsDef.argStructFields)
 	if numArgsDef != len(funcArgTypes) {
-		return nil, errors.Errorf("number of fields in command.Args struct (%d) does not match number of function arguments (%d)", numArgsDef, len(funcArgTypes))
+		return nil, fmt.Errorf("number of fields in command.Args struct (%d) does not match number of function arguments (%d)", numArgsDef, len(funcArgTypes))
 	}
 	for i := range argsDef.argStructFields {
 		if argsDef.argStructFields[i].Field.Type != funcArgTypes[i] {
-			return nil, errors.Errorf(
+			return nil, fmt.Errorf(
 				"type of command.Args struct field '%s' is %s, which does not match function argument %d type %s",
 				argsDef.argStructFields[i].Field.Name,
 				argsDef.argStructFields[i].Field.Type,

@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/domonda/errors"
-
 	reflection "github.com/ungerik/go-reflection"
 )
 
@@ -59,12 +57,12 @@ func (def *ArgsDef) Init(outerStructPtr interface{}) error {
 	}
 
 	if _, ok := outerStructPtr.(Args); !ok {
-		return errors.Errorf("outerStructPtr of type %T does not implement interface Args", outerStructPtr)
+		return fmt.Errorf("outerStructPtr of type %T does not implement interface Args", outerStructPtr)
 	}
 
 	def.outerStructType = reflection.DerefType(reflect.TypeOf(outerStructPtr))
 	if def.outerStructType.Kind() != reflect.Struct {
-		return errors.Errorf("ArgsDef must be contained in a struct, but outer type is %s", def.outerStructType)
+		return fmt.Errorf("ArgsDef must be contained in a struct, but outer type is %s", def.outerStructType)
 	}
 
 	def.argStructFields = reflection.FlatExportedNamedStructFields(def.outerStructType, ArgNameTag)
@@ -134,7 +132,7 @@ func (def *ArgsDef) argValsFromMapArgs(callerArgs map[string]interface{}) ([]ref
 		if !hasArg {
 			continue
 		}
-		err := assignAny(argVals[i], varArg)
+		err := assignAny(argVals[i], varArg) // TODO implement assignAny
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +143,7 @@ func (def *ArgsDef) argValsFromMapArgs(callerArgs map[string]interface{}) ([]ref
 func (def *ArgsDef) argValsFromJSON(argsJSON []byte) ([]reflect.Value, error) {
 	argsJSON = bytes.TrimSpace(argsJSON)
 	if len(argsJSON) < 2 {
-		return nil, errors.Errorf("invalid JSON: '%s'", string(argsJSON))
+		return nil, fmt.Errorf("invalid JSON: '%s'", string(argsJSON))
 	}
 
 	// Handle JSON array
@@ -160,7 +158,7 @@ func (def *ArgsDef) argValsFromJSON(argsJSON []byte) ([]reflect.Value, error) {
 		for i := range argVals {
 			argVals[i] = argsStruct.FieldByIndex(def.argStructFields[i].Field.Index)
 			if i < len(callerArray) {
-				err := assignAny(argVals[i], callerArray[i])
+				err := assignAny(argVals[i], callerArray[i]) // TODO implement assignAny
 				if err != nil {
 					return nil, err
 				}

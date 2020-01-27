@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"reflect"
+	"time"
 
 	"github.com/fatih/color"
 )
@@ -18,6 +19,14 @@ var (
 
 	ArgNameTag        = "arg"
 	ArgDescriptionTag = "desc"
+
+	// TimeFormats used in that order to try parse time strings
+	TimeFormats = []string{
+		time.RFC3339Nano,
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02 15:04",
+	}
 )
 
 var (

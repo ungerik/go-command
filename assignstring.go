@@ -6,15 +6,16 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/domonda/errors"
+	"time"
 
 	fs "github.com/ungerik/go-fs"
 )
 
 func assignString(destVal reflect.Value, sourceStr string) (err error) {
 	defer func() {
-		err = errors.Wrapf(err, "assignString(%s, %q)", destVal.Type(), sourceStr)
+		if err != nil {
+			err = fmt.Errorf("assignString(%s, %q): %w", destVal.Type(), sourceStr, err)
+		}
 	}()
 
 	destPtr := destVal.Addr().Interface()
@@ -23,6 +24,15 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 	case *string:
 		*dest = sourceStr
 		return nil
+
+	case *time.Time:
+		for _, format := range TimeFormats {
+			t, err := time.Parse(format, sourceStr)
+			if err == nil {
+				*dest = t
+			}
+		}
+		return fmt.Errorf("can't parse %q as time.Time using formats %#v", sourceStr, TimeFormats)
 
 	case encoding.TextUnmarshaler:
 		return dest.UnmarshalText([]byte(sourceStr))
@@ -71,10 +81,10 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 
 	case reflect.Slice:
 		if !strings.HasPrefix(sourceStr, "[") {
-			return errors.Errorf("slice value %q does not begin with '['", sourceStr)
+			return fmt.Errorf("slice value %q does not begin with '['", sourceStr)
 		}
 		if !strings.HasSuffix(sourceStr, "]") {
-			return errors.Errorf("slice value %q does not end with ']'", sourceStr)
+			return fmt.Errorf("slice value %q does not end with ']'", sourceStr)
 		}
 		// elemSourceStrings := strings.Split(sourceStr[1:len(sourceStr)-1], ",")
 		sourceFields, err := sliceLiteralFields(sourceStr)
@@ -95,10 +105,10 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 
 	case reflect.Array:
 		if !strings.HasPrefix(sourceStr, "[") {
-			return errors.Errorf("array value %q does not begin with '['", sourceStr)
+			return fmt.Errorf("array value %q does not begin with '['", sourceStr)
 		}
 		if !strings.HasSuffix(sourceStr, "]") {
-			return errors.Errorf("array value %q does not end with ']'", sourceStr)
+			return fmt.Errorf("array value %q does not end with ']'", sourceStr)
 		}
 		// elemSourceStrings := strings.Split(sourceStr[1:len(sourceStr)-1], ",")
 		sourceFields, err := sliceLiteralFields(sourceStr)
@@ -108,7 +118,7 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 
 		count := len(sourceFields)
 		if count != destVal.Len() {
-			return errors.Errorf("array value %q needs to have %d elements, but has %d", sourceStr, destVal.Len(), count)
+			return fmt.Errorf("array value %q needs to have %d elements, but has %d", sourceStr, destVal.Len(), count)
 
 		}
 
@@ -133,10 +143,10 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 
 func sliceLiteralFields(sourceStr string) (fields []string, err error) {
 	if !strings.HasPrefix(sourceStr, "[") {
-		return nil, errors.Errorf("slice value %q does not begin with '['", sourceStr)
+		return nil, fmt.Errorf("slice value %q does not begin with '['", sourceStr)
 	}
 	if !strings.HasSuffix(sourceStr, "]") {
-		return nil, errors.Errorf("slice value %q does not end with ']'", sourceStr)
+		return nil, fmt.Errorf("slice value %q does not end with ']'", sourceStr)
 	}
 	objectDepth := 0
 	bracketDepth := 0
@@ -149,7 +159,7 @@ func sliceLiteralFields(sourceStr string) (fields []string, err error) {
 		case '}':
 			objectDepth--
 			if objectDepth < 0 {
-				return nil, errors.Errorf("slice value %q has too many '}'", sourceStr)
+				return nil, fmt.Errorf("slice value %q has too many '}'", sourceStr)
 			}
 
 		case '[':
@@ -158,7 +168,7 @@ func sliceLiteralFields(sourceStr string) (fields []string, err error) {
 		case ']':
 			bracketDepth--
 			if bracketDepth < 0 {
-				return nil, errors.Errorf("slice value %q has too many ']'", sourceStr)
+				return nil, fmt.Errorf("slice value %q has too many ']'", sourceStr)
 			}
 			if objectDepth == 0 && bracketDepth == 0 && i-begin > 0 {
 				fields = append(fields, sourceStr[begin:i])

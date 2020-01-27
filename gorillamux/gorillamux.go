@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/domonda/errors"
 	"github.com/gorilla/mux"
 
 	"github.com/ungerik/go-command"
@@ -102,7 +101,7 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 			return
 		}
 		if _, exists := vars[name]; exists {
-			err = errors.Errorf("argument '%s' already set by request URL path", name)
+			err = fmt.Errorf("argument '%s' already set by request URL path", name)
 			handleErr(err, writer, request, errHandlers)
 			return
 		}

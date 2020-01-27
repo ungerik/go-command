@@ -7,8 +7,6 @@ import (
 	"sort"
 	"strings"
 	"unicode"
-
-	"github.com/domonda/errors"
 )
 
 type constError string
@@ -34,13 +32,13 @@ type stringArgsCommand struct {
 
 func checkCommandChars(command string) error {
 	if strings.IndexFunc(command, unicode.IsSpace) >= 0 {
-		return errors.Errorf("command contains space characters: '%s'", command)
+		return fmt.Errorf("command contains space characters: '%s'", command)
 	}
 	if strings.IndexFunc(command, unicode.IsGraphic) == -1 {
-		return errors.Errorf("command contains non graphc characters: '%s'", command)
+		return fmt.Errorf("command contains non graphc characters: '%s'", command)
 	}
 	if strings.ContainsAny(command, "|&;()<>") {
-		return errors.Errorf("command contains invalid characters: '%s'", command)
+		return fmt.Errorf("command contains invalid characters: '%s'", command)
 	}
 	return nil
 }
@@ -69,14 +67,14 @@ func NewStringArgsDispatcher(loggers ...StringArgsCommandLogger) *StringArgsDisp
 
 func (disp *StringArgsDispatcher) AddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
 	if _, exists := disp.comm[command]; exists {
-		return errors.Errorf("Command '%s' already added", command)
+		return fmt.Errorf("Command '%s' already added", command)
 	}
 	if err := checkCommandChars(command); err != nil {
-		return errors.Wrapf(err, "Command '%s'", command)
+		return fmt.Errorf("Command '%s' returned: %w", command, err)
 	}
 	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
-		return errors.Wrapf(err, "Command '%s'", command)
+		return fmt.Errorf("Command '%s' returned: %w", command, err)
 	}
 	disp.comm[command] = &stringArgsCommand{
 		command:         command,
@@ -99,7 +97,7 @@ func (disp *StringArgsDispatcher) MustAddCommand(command, description string, co
 func (disp *StringArgsDispatcher) AddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
 	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
 	if err != nil {
-		return errors.Wrap(err, "Default command")
+		return fmt.Errorf("Default command: %w", err)
 	}
 	disp.comm[Default] = &stringArgsCommand{
 		command:         Default,
@@ -143,7 +141,7 @@ func (disp *StringArgsDispatcher) Dispatch(ctx context.Context, command string, 
 func (disp *StringArgsDispatcher) MustDispatch(ctx context.Context, command string, args ...string) {
 	err := disp.Dispatch(ctx, command, args...)
 	if err != nil {
-		panic(errors.Wrapf(err, "Command '%s'", command))
+		panic(fmt.Errorf("Command '%s' returned: %w", command, err))
 	}
 }
 
@@ -154,7 +152,7 @@ func (disp *StringArgsDispatcher) DispatchDefaultCommand() error {
 func (disp *StringArgsDispatcher) MustDispatchDefaultCommand() {
 	err := disp.DispatchDefaultCommand()
 	if err != nil {
-		panic(errors.Wrap(err, "Default command"))
+		panic(fmt.Errorf("Default command: %w", err))
 	}
 }
 
@@ -170,7 +168,7 @@ func (disp *StringArgsDispatcher) DispatchCombinedCommandAndArgs(ctx context.Con
 func (disp *StringArgsDispatcher) MustDispatchCombinedCommandAndArgs(ctx context.Context, commandAndArgs []string) (command string) {
 	command, err := disp.DispatchCombinedCommandAndArgs(ctx, commandAndArgs)
 	if err != nil {
-		panic(errors.Wrapf(err, "MustDispatchCombinedCommandAndArgs(%v)", commandAndArgs))
+		panic(fmt.Errorf("MustDispatchCombinedCommandAndArgs(%v): %w", commandAndArgs, err))
 	}
 	return command
 }

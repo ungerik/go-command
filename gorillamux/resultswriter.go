@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/domonda/errors"
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
 
@@ -66,7 +65,7 @@ func RespondBinary(contentType string) ResultsWriterFunc {
 			case io.Reader:
 				_, err = io.Copy(&buf, data)
 			default:
-				return errors.Errorf("RespondBinary does not support result type %s", resultVal.Type())
+				return fmt.Errorf("RespondBinary does not support result type %s", resultVal.Type())
 			}
 			if err != nil {
 				return err
@@ -163,11 +162,11 @@ var RespondDetectContentType ResultsWriterFunc = func(args command.Args, vars ma
 		return resultErr
 	}
 	if len(resultVals) != 1 {
-		return errors.Errorf("RespondDetectContentType needs 1 result, got %d", len(resultVals))
+		return fmt.Errorf("RespondDetectContentType needs 1 result, got %d", len(resultVals))
 	}
 	data, ok := resultVals[0].Interface().([]byte)
 	if !ok {
-		return errors.Errorf("RespondDetectContentType needs []byte result, got %s", resultVals[0].Type())
+		return fmt.Errorf("RespondDetectContentType needs []byte result, got %s", resultVals[0].Type())
 	}
 
 	writer.Header().Add("Content-Type", DetectContentType(data))
@@ -181,11 +180,11 @@ func RespondContentType(contentType string) ResultsWriter {
 			return resultErr
 		}
 		if len(resultVals) != 1 {
-			return errors.Errorf("RespondDetectContentType needs 1 result, got %d", len(resultVals))
+			return fmt.Errorf("RespondDetectContentType needs 1 result, got %d", len(resultVals))
 		}
 		data, ok := resultVals[0].Interface().([]byte)
 		if !ok {
-			return errors.Errorf("RespondDetectContentType needs []byte result, got %s", resultVals[0].Type())
+			return fmt.Errorf("RespondDetectContentType needs []byte result, got %s", resultVals[0].Type())
 		}
 
 		writer.Header().Add("Content-Type", contentType)

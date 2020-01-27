@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"sort"
-
-	"github.com/domonda/errors"
 )
 
 type SuperCommandNotFound string
@@ -30,11 +28,11 @@ func NewSuperStringArgsDispatcher(loggers ...StringArgsCommandLogger) *SuperStri
 func (disp *SuperStringArgsDispatcher) AddSuperCommand(superCommand string) (subDisp *StringArgsDispatcher, err error) {
 	if superCommand != "" {
 		if err := checkCommandChars(superCommand); err != nil {
-			return nil, errors.Wrapf(err, "Command '%s'", superCommand)
+			return nil, fmt.Errorf("Command '%s': %w", superCommand, err)
 		}
 	}
 	if _, exists := disp.sub[superCommand]; exists {
-		return nil, errors.Errorf("super command already added: '%s'", superCommand)
+		return nil, fmt.Errorf("super command already added: '%s'", superCommand)
 	}
 	subDisp = NewStringArgsDispatcher(disp.loggers...)
 	disp.sub[superCommand] = subDisp
@@ -44,7 +42,7 @@ func (disp *SuperStringArgsDispatcher) AddSuperCommand(superCommand string) (sub
 func (disp *SuperStringArgsDispatcher) MustAddSuperCommand(superCommand string) (subDisp *StringArgsDispatcher) {
 	subDisp, err := disp.AddSuperCommand(superCommand)
 	if err != nil {
-		panic(errors.Wrapf(err, "MustAddSuperCommand(%s)", superCommand))
+		panic(fmt.Errorf("MustAddSuperCommand(%s): %w", superCommand, err))
 	}
 	return subDisp
 }
@@ -60,7 +58,7 @@ func (disp *SuperStringArgsDispatcher) AddDefaultCommand(description string, com
 func (disp *SuperStringArgsDispatcher) MustAddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) {
 	err := disp.AddDefaultCommand(description, commandFunc, args, resultsHandlers...)
 	if err != nil {
-		panic(errors.Wrapf(err, "MustAddDefaultCommand(%s)", description))
+		panic(fmt.Errorf("MustAddDefaultCommand(%s): %w", description, err))
 	}
 }
 func (disp *SuperStringArgsDispatcher) HasCommnd(superCommand string) bool {
@@ -90,7 +88,7 @@ func (disp *SuperStringArgsDispatcher) Dispatch(ctx context.Context, superComman
 func (disp *SuperStringArgsDispatcher) MustDispatch(ctx context.Context, superCommand, command string, args ...string) {
 	err := disp.Dispatch(ctx, superCommand, command, args...)
 	if err != nil {
-		panic(errors.Wrapf(err, "Command '%s'", command))
+		panic(fmt.Errorf("Command '%s': %w", command, err))
 	}
 }
 
@@ -101,7 +99,7 @@ func (disp *SuperStringArgsDispatcher) DispatchDefaultCommand() error {
 func (disp *SuperStringArgsDispatcher) MustDispatchDefaultCommand() {
 	err := disp.DispatchDefaultCommand()
 	if err != nil {
-		panic(errors.Wrap(err, "Default command"))
+		panic(fmt.Errorf("Default command: %w", err))
 	}
 }
 
@@ -131,7 +129,7 @@ func (disp *SuperStringArgsDispatcher) DispatchCombinedCommandAndArgs(ctx contex
 func (disp *SuperStringArgsDispatcher) MustDispatchCombinedCommandAndArgs(ctx context.Context, commandAndArgs []string) (superCommand, command string) {
 	superCommand, command, err := disp.DispatchCombinedCommandAndArgs(ctx, commandAndArgs)
 	if err != nil {
-		panic(errors.Wrapf(err, "MustDispatchCombinedCommandAndArgs(%v)", commandAndArgs))
+		panic(fmt.Errorf("MustDispatchCombinedCommandAndArgs(%v): %w", commandAndArgs, err))
 	}
 	return superCommand, command
 }
