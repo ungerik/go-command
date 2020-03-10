@@ -3,7 +3,6 @@ module github.com/ungerik/go-command
 go 1.13
 
 require (
-	github.com/domonda/errors v0.8.0
 	github.com/domonda/go-types v0.0.0-20200104165438-8a9c3902aa39
 	github.com/domonda/go-wraperr v0.0.0-20191218095026-c132bf32bd96 // indirect
 	github.com/domonda/golog v0.0.0-20200104211507-b1ff3be34563
@@ -11,7 +10,6 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/guregu/null v3.4.0+incompatible // indirect
 	github.com/h2non/filetype v1.0.10
-	github.com/jinzhu/now v1.1.1 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.11 // indirect
 	github.com/stretchr/testify v1.4.0
