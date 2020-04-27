@@ -132,17 +132,16 @@ func handleErr(err error, writer http.ResponseWriter, request *http.Request, err
 func MapJSONBodyFieldsAsVars(mapping map[string]string, wrappedHandler http.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
-		bodyFields := make(map[string]interface{})
-		err := json.NewDecoder(request.Body).Decode(&bodyFields)
+		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			httperr.BadRequest.ServeHTTP(writer, request)
 			return
 		}
 		vars := mux.Vars(request)
-		for bodyField, muxVar := range mapping {
-			if value, ok := bodyFields[bodyField]; ok {
-				vars[muxVar] = fmt.Sprint(value)
-			}
+		err = jsonBodyFieldsAsVars(body, mapping, vars)
+		if err != nil {
+			httperr.BadRequest.ServeHTTP(writer, request)
+			return
 		}
 		wrappedHandler.ServeHTTP(writer, request)
 	}
@@ -151,16 +150,61 @@ func MapJSONBodyFieldsAsVars(mapping map[string]string, wrappedHandler http.Hand
 func JSONBodyFieldsAsVars(wrappedHandler http.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
-		bodyFields := make(map[string]interface{})
-		err := json.NewDecoder(request.Body).Decode(&bodyFields)
+		body, err := ioutil.ReadAll(request.Body)
 		if err != nil {
 			httperr.BadRequest.ServeHTTP(writer, request)
 			return
 		}
 		vars := mux.Vars(request)
-		for bodyField, value := range bodyFields {
-			vars[bodyField] = fmt.Sprint(value)
+		err = jsonBodyFieldsAsVars(body, nil, vars)
+		if err != nil {
+			httperr.BadRequest.ServeHTTP(writer, request)
+			return
 		}
 		wrappedHandler.ServeHTTP(writer, request)
 	}
+}
+
+func jsonBodyFieldsAsVars(body []byte, mapping map[string]string, vars map[string]string) error {
+	fields := make(map[string]json.RawMessage)
+	err := json.Unmarshal(body, &fields)
+	if err != nil {
+		return err
+	}
+
+	if mapping != nil {
+		mappedFields := make(map[string]json.RawMessage, len(fields))
+		for fieldName, mappedName := range mapping {
+			if value, ok := fields[fieldName]; ok {
+				mappedFields[mappedName] = value
+			}
+		}
+		fields = mappedFields
+	}
+
+	for name, value := range fields {
+		if len(value) == 0 {
+			// should never happen with well formed JSON
+			return fmt.Errorf("JSON body field %q is empty", name)
+		}
+		valueStr := string(value)
+		switch {
+		case valueStr == "null":
+			// JSON null is handled as empty string command arg
+			vars[name] = ""
+
+		case valueStr[0] == '"':
+			// Unescape JSON string
+			err = json.Unmarshal(value, &valueStr)
+			if err != nil {
+				return fmt.Errorf("can't unmarshal JSON body field %q as string because of: %w", name, err)
+			}
+			vars[name] = valueStr
+
+		default:
+			// All other JSON types are mapped directly to string
+			vars[name] = valueStr
+		}
+	}
+	return nil
 }
