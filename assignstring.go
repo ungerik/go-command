@@ -35,6 +35,14 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 		}
 		return fmt.Errorf("can't parse %q as time.Time using formats %#v", sourceStr, TimeFormats)
 
+	case *time.Duration:
+		duration, err := time.ParseDuration(sourceStr)
+		if err != nil {
+			return fmt.Errorf("can't parse %q as time.Duration because of: %w", sourceStr, err)
+		}
+		*dest = duration
+		return nil
+
 	case encoding.TextUnmarshaler:
 		return dest.UnmarshalText([]byte(sourceStr))
 
