@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	fs "github.com/ungerik/go-fs"
+	"github.com/domonda/go-types/nullable"
+	"github.com/ungerik/go-fs"
 )
 
 func assignString(destVal reflect.Value, sourceStr string) (err error) {
@@ -27,13 +28,23 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 
 	case *time.Time:
 		for _, format := range TimeFormats {
-			t, err := time.Parse(format, sourceStr)
+			t, err := time.ParseInLocation(format, sourceStr, time.Local)
 			if err == nil {
 				*dest = t
 				return nil
 			}
 		}
 		return fmt.Errorf("can't parse %q as time.Time using formats %#v", sourceStr, TimeFormats)
+
+	case *nullable.Time:
+		for _, format := range TimeFormats {
+			t, err := nullable.TimeParseInLocation(format, sourceStr, time.Local)
+			if err == nil {
+				*dest = t
+				return nil
+			}
+		}
+		return fmt.Errorf("can't parse %q as nullable.Time using formats %#v", sourceStr, TimeFormats)
 
 	case *time.Duration:
 		duration, err := time.ParseDuration(sourceStr)

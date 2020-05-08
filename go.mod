@@ -3,18 +3,16 @@ module github.com/ungerik/go-command
 go 1.13
 
 require (
-	github.com/domonda/go-types v0.0.0-20200104165438-8a9c3902aa39
-	github.com/domonda/go-wraperr v0.0.0-20191218095026-c132bf32bd96 // indirect
-	github.com/domonda/golog v0.0.0-20200104211507-b1ff3be34563
-	github.com/fatih/color v1.8.0
-	github.com/gorilla/mux v1.7.3
-	github.com/guregu/null v3.4.0+incompatible // indirect
-	github.com/h2non/filetype v1.0.10
-	github.com/mattn/go-colorable v0.1.4 // indirect
-	github.com/mattn/go-isatty v0.0.11 // indirect
-	github.com/stretchr/testify v1.4.0
-	github.com/ungerik/go-fs v0.0.0-20191127131724-ee9af4c83317
-	github.com/ungerik/go-httpx v0.0.0-20191022153633-4ee50a95056d
+	github.com/domonda/go-types v0.0.0-20200508135225-99aa86ad3b7a
+	github.com/domonda/go-wraperr v0.0.0-20200414143540-485fd6d06d5d // indirect
+	github.com/domonda/golog v0.0.0-20200504110752-9db73907a050
+	github.com/fatih/color v1.9.0
+	github.com/gorilla/mux v1.7.4
+	github.com/guregu/null v4.0.0+incompatible // indirect
+	github.com/h2non/filetype v1.0.12
+	github.com/mattn/go-colorable v0.1.6 // indirect
+	github.com/stretchr/testify v1.5.1
+	github.com/ungerik/go-fs v0.0.0-20200425122624-6bc19757f8de
+	github.com/ungerik/go-httpx v0.0.0-20200430100650-4794cf507bad
 	github.com/ungerik/go-reflection v0.0.0-20191013094457-172d2e71715f
-	golang.org/x/sys v0.0.0-20200103143344-a1369afcdac7 // indirect
 )
