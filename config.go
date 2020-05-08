@@ -20,12 +20,15 @@ var (
 	ArgNameTag        = "arg"
 	ArgDescriptionTag = "desc"
 
-	// TimeFormats used in that order to try parse time strings
+	// TimeFormats used in that order to try parse time strings.
+	// If a time format has not time zone part,
+	// then the date is returned in the local time zone.
 	TimeFormats = []string{
 		time.RFC3339Nano,
 		time.RFC3339,
 		"2006-01-02 15:04:05",
 		"2006-01-02 15:04",
+		"2006-01-02",
 	}
 )
 
