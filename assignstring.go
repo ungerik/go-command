@@ -139,7 +139,6 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 		count := len(sourceFields)
 		if count != destVal.Len() {
 			return fmt.Errorf("array value %q needs to have %d elements, but has %d", sourceStr, destVal.Len(), count)
-
 		}
 
 		for i := 0; i < count; i++ {
