@@ -3,7 +3,7 @@ module github.com/ungerik/go-command
 go 1.13
 
 require (
-	github.com/domonda/go-types v0.0.0-20200508135225-99aa86ad3b7a
+	github.com/domonda/go-types v0.0.0-20200518105731-97a50d8251f8
 	github.com/domonda/go-wraperr v0.0.0-20200414143540-485fd6d06d5d // indirect
 	github.com/domonda/golog v0.0.0-20200504110752-9db73907a050
 	github.com/fatih/color v1.9.0
