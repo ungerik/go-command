@@ -67,7 +67,7 @@ func Example(aBool bool, anInt int, aFloat float64, color Color, file fs.FileRea
 		Bool("aBool", aBool).
 		Int("anInt", anInt).
 		Float("aFloat", aFloat).
-		Val("color", color).
+		Any("color", color).
 		Str("file", file.Name()).
 		// Str("aDate", string(aDate)).
 		// Time("aTime", aTime).
