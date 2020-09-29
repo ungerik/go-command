@@ -33,7 +33,7 @@ func resultsToInterfaces(results []reflect.Value) ([]interface{}, error) {
 		case reflect.Struct, reflect.Slice, reflect.Array:
 			b, err := json.MarshalIndent(resultInterface, "", "  ")
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("can't print command result as JSON because: %w", err)
 			}
 			r[i] = string(b)
 			continue
