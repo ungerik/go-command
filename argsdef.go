@@ -188,16 +188,14 @@ func (def *ArgsDef) StringArgsFunc(commandFunc interface{}, resultsHandlers []Re
 		return nil, err
 	}
 
-	return func(ctx context.Context, callerArgs ...string) error {
+	f := func(ctx context.Context, callerArgs ...string) error {
 		argVals, err := def.argValsFromStringArgs(callerArgs)
 		if err != nil {
 			return err
 		}
-		if dispatcher.firstArgIsContext {
-			argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
-		}
-		return dispatcher.callWithResultsHandlers(argVals, resultsHandlers)
-	}, nil
+		return dispatcher.callWithResultsHandlers(ctx, argVals, resultsHandlers)
+	}
+	return f, nil
 }
 
 func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (StringMapArgsFunc, error) {
@@ -206,16 +204,14 @@ func (def *ArgsDef) StringMapArgsFunc(commandFunc interface{}, resultsHandlers [
 		return nil, err
 	}
 
-	return func(ctx context.Context, callerArgs map[string]string) (err error) {
+	f := func(ctx context.Context, callerArgs map[string]string) (err error) {
 		argVals, err := def.argValsFromStringMapArgs(callerArgs)
 		if err != nil {
 			return err
 		}
-		if dispatcher.firstArgIsContext {
-			argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
-		}
-		return dispatcher.callWithResultsHandlers(argVals, resultsHandlers)
-	}, nil
+		return dispatcher.callWithResultsHandlers(ctx, argVals, resultsHandlers)
+	}
+	return f, nil
 }
 
 func (def *ArgsDef) MapArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (MapArgsFunc, error) {
@@ -224,16 +220,14 @@ func (def *ArgsDef) MapArgsFunc(commandFunc interface{}, resultsHandlers []Resul
 		return nil, err
 	}
 
-	return func(ctx context.Context, callerArgs map[string]interface{}) (err error) {
+	f := func(ctx context.Context, callerArgs map[string]interface{}) (err error) {
 		argVals, err := def.argValsFromMapArgs(callerArgs)
 		if err != nil {
 			return err
 		}
-		if dispatcher.firstArgIsContext {
-			argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
-		}
-		return dispatcher.callWithResultsHandlers(argVals, resultsHandlers)
-	}, nil
+		return dispatcher.callWithResultsHandlers(ctx, argVals, resultsHandlers)
+	}
+	return f, nil
 }
 
 func (def *ArgsDef) JSONArgsFunc(commandFunc interface{}, resultsHandlers []ResultsHandler) (JSONArgsFunc, error) {
@@ -242,16 +236,14 @@ func (def *ArgsDef) JSONArgsFunc(commandFunc interface{}, resultsHandlers []Resu
 		return nil, err
 	}
 
-	return func(ctx context.Context, callerArgs []byte) (err error) {
+	f := func(ctx context.Context, callerArgs []byte) (err error) {
 		argVals, err := def.argValsFromJSON(callerArgs)
 		if err != nil {
 			return err
 		}
-		if dispatcher.firstArgIsContext {
-			argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
-		}
-		return dispatcher.callWithResultsHandlers(argVals, resultsHandlers)
-	}, nil
+		return dispatcher.callWithResultsHandlers(ctx, argVals, resultsHandlers)
+	}
+	return f, nil
 }
 
 func (def *ArgsDef) StringArgsResultValuesFunc(commandFunc interface{}) (StringArgsResultValuesFunc, error) {
@@ -260,16 +252,14 @@ func (def *ArgsDef) StringArgsResultValuesFunc(commandFunc interface{}) (StringA
 		return nil, err
 	}
 
-	return func(ctx context.Context, args []string) ([]reflect.Value, error) {
+	f := func(ctx context.Context, args []string) ([]reflect.Value, error) {
 		argVals, err := def.argValsFromStringArgs(args)
 		if err != nil {
 			return nil, err
 		}
-		if dispatcher.firstArgIsContext {
-			argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
-		}
-		return dispatcher.callAndReturnResults(argVals)
-	}, nil
+		return dispatcher.callAndReturnResults(ctx, argVals)
+	}
+	return f, nil
 }
 
 func (def *ArgsDef) StringMapArgsResultValuesFunc(commandFunc interface{}) (StringMapArgsResultValuesFunc, error) {
@@ -278,16 +268,14 @@ func (def *ArgsDef) StringMapArgsResultValuesFunc(commandFunc interface{}) (Stri
 		return nil, err
 	}
 
-	return func(ctx context.Context, args map[string]string) ([]reflect.Value, error) {
+	f := func(ctx context.Context, args map[string]string) ([]reflect.Value, error) {
 		argVals, err := def.argValsFromStringMapArgs(args)
 		if err != nil {
 			return nil, err
 		}
-		if dispatcher.firstArgIsContext {
-			argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
-		}
-		return dispatcher.callAndReturnResults(argVals)
-	}, nil
+		return dispatcher.callAndReturnResults(ctx, argVals)
+	}
+	return f, nil
 }
 
 func (def *ArgsDef) MapArgsResultValuesFunc(commandFunc interface{}) (MapArgsResultValuesFunc, error) {
@@ -296,16 +284,14 @@ func (def *ArgsDef) MapArgsResultValuesFunc(commandFunc interface{}) (MapArgsRes
 		return nil, err
 	}
 
-	return func(ctx context.Context, args map[string]interface{}) ([]reflect.Value, error) {
+	f := func(ctx context.Context, args map[string]interface{}) ([]reflect.Value, error) {
 		argVals, err := def.argValsFromMapArgs(args)
 		if err != nil {
 			return nil, err
 		}
-		if dispatcher.firstArgIsContext {
-			argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
-		}
-		return dispatcher.callAndReturnResults(argVals)
-	}, nil
+		return dispatcher.callAndReturnResults(ctx, argVals)
+	}
+	return f, nil
 }
 
 func (def *ArgsDef) JSONArgsResultValuesFunc(commandFunc interface{}) (JSONArgsResultValuesFunc, error) {
@@ -314,14 +300,12 @@ func (def *ArgsDef) JSONArgsResultValuesFunc(commandFunc interface{}) (JSONArgsR
 		return nil, err
 	}
 
-	return func(ctx context.Context, argsJSON []byte) ([]reflect.Value, error) {
+	f := func(ctx context.Context, argsJSON []byte) ([]reflect.Value, error) {
 		argVals, err := def.argValsFromJSON(argsJSON)
 		if err != nil {
 			return nil, err
 		}
-		if dispatcher.firstArgIsContext {
-			argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
-		}
-		return dispatcher.callAndReturnResults(argVals)
-	}, nil
+		return dispatcher.callAndReturnResults(ctx, argVals)
+	}
+	return f, nil
 }

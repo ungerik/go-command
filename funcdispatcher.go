@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 )
@@ -19,12 +20,19 @@ import (
 // 	getReplacementVal getReplacementValFunc
 // }
 
-func functionArgTypesWithoutReplaceables(funcType reflect.Type) (argTypes []reflect.Type) {
+// functionArgTypesWithoutReplaceables returns the function argument types except for
+// the first argument of type context.Context and callback function arguments.
+func functionArgTypesWithoutReplaceables(funcType reflect.Type) (argTypes []reflect.Type, firstArgIsContext bool, insertArgs []insertArg) {
 	numArgs := funcType.NumIn()
 	argTypes = make([]reflect.Type, 0, numArgs)
 	for i := 0; i < numArgs; i++ {
 		t := funcType.In(i)
 		if i == 0 && t == typeOfContext {
+			firstArgIsContext = true
+			continue
+		}
+		if t.Kind() == reflect.Func {
+			insertArgs = append(insertArgs, insertArg{index: i, value: reflect.Zero(t)})
 			continue
 		}
 		// _, hasPlaceholder := ReplaceArgTypes[t]
@@ -33,7 +41,12 @@ func functionArgTypesWithoutReplaceables(funcType reflect.Type) (argTypes []refl
 		// }
 		argTypes = append(argTypes, t)
 	}
-	return argTypes
+	return argTypes, firstArgIsContext, insertArgs
+}
+
+type insertArg struct {
+	index int
+	value reflect.Value
 }
 
 type funcDispatcher struct {
@@ -45,6 +58,7 @@ type funcDispatcher struct {
 	// argReplacements []argReplacement
 
 	firstArgIsContext bool
+	insertArgs        []insertArg
 	errorIndex        int
 }
 
@@ -58,8 +72,6 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 		return nil, fmt.Errorf("expected a function or method, but got %s", disp.funcType)
 	}
 
-	disp.firstArgIsContext = disp.funcType.NumIn() > 0 && disp.funcType.In(0) == typeOfContext
-
 	numResults := disp.funcType.NumOut()
 	if numResults > 0 && disp.funcType.Out(numResults-1) == typeOfError {
 		disp.errorIndex = numResults - 1
@@ -69,7 +81,8 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 
 	// disp.argReplacements = nil // TODO
 
-	funcArgTypes := functionArgTypesWithoutReplaceables(disp.funcType)
+	var funcArgTypes []reflect.Type
+	funcArgTypes, disp.firstArgIsContext, disp.insertArgs = functionArgTypesWithoutReplaceables(disp.funcType)
 	numArgsDef := len(argsDef.argStructFields)
 	if numArgsDef != len(funcArgTypes) {
 		return nil, fmt.Errorf("number of fields in command.Args struct (%d) does not match number of function arguments (%d)", numArgsDef, len(funcArgTypes))
@@ -89,7 +102,14 @@ func newFuncDispatcher(argsDef *ArgsDef, commandFunc interface{}) (disp *funcDis
 	return disp, nil
 }
 
-func (disp *funcDispatcher) callWithResultsHandlers(argVals []reflect.Value, resultsHandlers []ResultsHandler) error {
+func (disp *funcDispatcher) callWithResultsHandlers(ctx context.Context, argVals []reflect.Value, resultsHandlers []ResultsHandler) error {
+	if disp.firstArgIsContext {
+		argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
+	}
+	for _, insert := range disp.insertArgs {
+		argVals = append(argVals[:insert.index], append([]reflect.Value{insert.value}, argVals[insert.index:]...)...)
+	}
+
 	var resultVals []reflect.Value
 	if disp.funcType.IsVariadic() {
 		resultVals = disp.funcVal.CallSlice(argVals)
@@ -112,7 +132,14 @@ func (disp *funcDispatcher) callWithResultsHandlers(argVals []reflect.Value, res
 	return resultErr
 }
 
-func (disp *funcDispatcher) callAndReturnResults(argVals []reflect.Value) ([]reflect.Value, error) {
+func (disp *funcDispatcher) callAndReturnResults(ctx context.Context, argVals []reflect.Value) ([]reflect.Value, error) {
+	if disp.firstArgIsContext {
+		argVals = append([]reflect.Value{reflect.ValueOf(ctx)}, argVals...)
+	}
+	for _, insert := range disp.insertArgs {
+		argVals = append(argVals[:insert.index], append([]reflect.Value{insert.value}, argVals[insert.index:]...)...)
+	}
+
 	var resultVals []reflect.Value
 	if disp.funcType.IsVariadic() {
 		resultVals = disp.funcVal.CallSlice(argVals)
