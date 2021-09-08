@@ -190,7 +190,8 @@ func jsonBodyFieldsAsVars(body []byte, mapping map[string]string, vars map[strin
 		valueStr := string(value)
 		switch {
 		case valueStr == "null":
-			// JSON nulls are left alone
+			// JSON null is handled as empty string command arg
+			vars[name] = ""
 
 		case valueStr[0] == '"':
 			// Unescape JSON string
