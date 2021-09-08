@@ -54,15 +54,15 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 		*dest = duration
 		return nil
 
+	case json.Unmarshaler:
+		return dest.UnmarshalJSON([]byte(sourceStr))
+
 	case encoding.TextUnmarshaler:
 		return dest.UnmarshalText([]byte(sourceStr))
 
 	case *fs.FileReader:
 		*dest = fs.File(sourceStr)
 		return nil
-
-	case json.Unmarshaler:
-		return dest.UnmarshalJSON([]byte(sourceStr))
 
 	case *map[string]interface{}:
 		return json.Unmarshal([]byte(sourceStr), dest)
