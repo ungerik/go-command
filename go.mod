@@ -1,17 +1,32 @@
 module github.com/ungerik/go-command
 
-go 1.13
+go 1.17
 
 require (
-	github.com/domonda/go-types v0.0.0-20210316184039-9c2f87779d2d
-	github.com/domonda/golog v0.0.0-20210224141652-8321271c0ee9
-	github.com/fatih/color v1.10.0
+	github.com/domonda/go-types v0.0.0-20210915112857-4949b80d597b
+	github.com/domonda/golog v0.0.0-20210830091352-7d9aec2859c7
+	github.com/fatih/color v1.12.0
 	github.com/gorilla/mux v1.8.0
 	github.com/h2non/filetype v1.1.1
-	github.com/muesli/termenv v0.8.0 // indirect
+	github.com/lib/pq v1.10.3 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/muesli/termenv v0.9.0 // indirect
 	github.com/stretchr/testify v1.7.0
-	github.com/ungerik/go-fs v0.0.0-20210316165925-3944ea9e3e2a
+	github.com/ungerik/go-fs v0.0.0-20210610150523-5dc2f3dd4d0a
 	github.com/ungerik/go-httpx v0.0.0-20210208164815-b56980774627
-	github.com/ungerik/go-reflection v0.0.0-20191013094457-172d2e71715f
-	golang.org/x/sys v0.0.0-20210316164454-77fc1eacc6aa // indirect
+	github.com/ungerik/go-reflection v0.0.0-20210817083039-1053f336f275
+	golang.org/x/sys v0.0.0-20210915083310-ed5796bab164 // indirect
+)
+
+require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/domonda/go-encjson v0.0.0-20210830085227-1beee57a72d8 // indirect
+	github.com/domonda/go-pretty v0.0.0-20210202131827-b4ff5dbd12fd // indirect
+	github.com/kr/pretty v0.2.1 // indirect
+	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/mattn/go-colorable v0.1.8 // indirect
+	github.com/mattn/go-runewidth v0.0.13 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
