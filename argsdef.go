@@ -90,7 +90,7 @@ func (def *ArgsDef) argValsFromStringArgs(callerArgs []string) ([]reflect.Value,
 		if i >= numStringArgs {
 			continue
 		}
-		err := assignString(argVals[i], callerArgs[i])
+		err := AssignValueFromString(argVals[i], callerArgs[i])
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +111,7 @@ func (def *ArgsDef) argValsFromStringMapArgs(callerArgs map[string]string) ([]re
 		if !hasArg {
 			continue
 		}
-		err := assignString(argVals[i], stringArg)
+		err := AssignValueFromString(argVals[i], stringArg)
 		if err != nil {
 			return nil, err
 		}

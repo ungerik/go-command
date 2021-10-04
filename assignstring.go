@@ -12,10 +12,18 @@ import (
 	"github.com/ungerik/go-fs"
 )
 
-func assignString(destVal reflect.Value, sourceStr string) (err error) {
+func AssignFromString(destPtr interface{}, sourceStr string) error {
+	v := reflect.ValueOf(destPtr)
+	if v.Kind() != reflect.Ptr {
+		return fmt.Errorf("AssignFromString expected destination pointer type but got: %s", v.Type())
+	}
+	return AssignValueFromString(v.Elem(), sourceStr)
+}
+
+func AssignValueFromString(destVal reflect.Value, sourceStr string) (err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("assignString(%s, %q): %w", destVal.Type(), sourceStr, err)
+			err = fmt.Errorf("AssignValueFromString(%s, %q): %w", destVal.Type(), sourceStr, err)
 		}
 	}()
 
@@ -91,7 +99,7 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 			if ptr.IsNil() {
 				ptr = reflect.New(destVal.Type().Elem())
 			}
-			err := assignString(ptr.Elem(), sourceStr)
+			err := AssignValueFromString(ptr.Elem(), sourceStr)
 			if err != nil {
 				return err
 			}
@@ -116,7 +124,7 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 		destVal.Set(reflect.MakeSlice(destVal.Type(), count, count))
 
 		for i := 0; i < count; i++ {
-			err := assignString(destVal.Index(i), sourceFields[i])
+			err := AssignValueFromString(destVal.Index(i), sourceFields[i])
 			if err != nil {
 				return err
 			}
@@ -142,15 +150,21 @@ func assignString(destVal reflect.Value, sourceStr string) (err error) {
 		}
 
 		for i := 0; i < count; i++ {
-			err := assignString(destVal.Index(i), sourceFields[i])
+			err := AssignValueFromString(destVal.Index(i), sourceFields[i])
 			if err != nil {
 				return err
 			}
 		}
 		return nil
 
+	case reflect.Chan:
+		// We can't assign a string to a channel, it's OK to ignore it
+		// destVal = reflect.Zero(destVal.Type()) // or set nil?
+		return nil
+
 	case reflect.Func:
 		// We can't assign a string to a function, it's OK to ignore it
+		// destVal = reflect.Zero(destVal.Type()) // or set nil?
 		return nil
 	}
 
