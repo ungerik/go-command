@@ -9,9 +9,10 @@ type Function interface {
 	Name() string
 	String() string
 
-	ContextArg() bool
 	NumArgs() int
+	ContextArg() bool
 	NumResults() int
+	ErrorResult() bool
 
 	ArgNames() []string
 	ArgTypes() []reflect.Type

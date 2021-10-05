@@ -190,8 +190,42 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 	if len(argNames) != len(argTypes) {
 		panic("len(argNames) != len(argTypes)")
 	}
-	hasContextArg := len(argTypes) > 0 && argTypes[0] == "context.Context"
 	resultTypes := funcDeclResultTypes(funcDecl)
+	hasContextArg := len(argTypes) > 0 && argTypes[0] == "context.Context"
+	hasErrorResult := len(resultTypes) > 0 && resultTypes[len(resultTypes)-1] == "error"
+
+	writeFuncCall := func() {
+		numResultsWithoutErr := len(resultTypes)
+		if hasErrorResult {
+			numResultsWithoutErr--
+		}
+		if numResultsWithoutErr > 0 {
+			fmt.Fprintf(w, "\tresults = make([]interface{}, %d)\n", numResultsWithoutErr)
+		}
+		fmt.Fprintf(w, "\t")
+		for i := 0; i < numResultsWithoutErr; i++ {
+			if i > 0 {
+				fmt.Fprintf(w, ", ")
+			}
+			fmt.Fprintf(w, "results[%d]", i)
+		}
+		if hasErrorResult {
+			if numResultsWithoutErr == 0 {
+				fmt.Fprintf(w, "err")
+			} else {
+				fmt.Fprintf(w, ", err")
+			}
+		}
+		if len(resultTypes) > 0 {
+			fmt.Fprintf(w, " = ")
+		}
+		ellipsis := ""
+		if len(argTypes) > 0 && strings.HasPrefix(argTypes[len(argTypes)-1], "...") {
+			ellipsis = "..."
+		}
+		fmt.Fprintf(w, "%s(%s%s)\n", funcDecl.Name.Name, strings.Join(argNames, ", "), ellipsis)
+		fmt.Fprintf(w, "\treturn results, err\n")
+	}
 
 	fmt.Fprintf(w, "type %s struct{}\n\n", implType)
 
@@ -203,9 +237,10 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 	fmt.Fprintf(w, "\treturn \"%s%s\"\n", funcDecl.Name.Name, funcTypeString(funcDecl.Type))
 	fmt.Fprintf(w, "}\n\n")
 
-	fmt.Fprintf(w, "func (%s) ContextArg() bool { return %t }\n", implType, hasContextArg)
-	fmt.Fprintf(w, "func (%s) NumArgs()    int  { return %d }\n", implType, len(argTypes))
-	fmt.Fprintf(w, "func (%s) NumResults() int  { return %d }\n\n", implType, len(resultTypes))
+	fmt.Fprintf(w, "func (%s) NumArgs() int      { return %d }\n", implType, len(argTypes))
+	fmt.Fprintf(w, "func (%s) ContextArg() bool  { return %t }\n", implType, hasContextArg)
+	fmt.Fprintf(w, "func (%s) NumResults() int   { return %d }\n", implType, len(resultTypes))
+	fmt.Fprintf(w, "func (%s) ErrorResult() bool { return %t }\n\n", implType, hasErrorResult)
 
 	fmt.Fprintf(w, "func (%s) ArgNames() []string {\n", implType)
 	{
@@ -273,26 +308,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 			}
 			fmt.Fprintf(w, "\t}\n")
 		}
-
-		if len(resultTypes) > 0 {
-			fmt.Fprintf(w, "\tresults = make([]interface{}, %d)\n", len(resultTypes))
-		}
-		fmt.Fprintf(w, "\t")
-		if len(resultTypes) > 0 {
-			for i := range resultTypes {
-				if i > 0 {
-					fmt.Fprintf(w, ", ")
-				}
-				fmt.Fprintf(w, "results[%d]", i)
-			}
-			fmt.Fprintf(w, " = ")
-		}
-		ellipsis := ""
-		if len(argTypes) > 0 && strings.HasPrefix(argTypes[len(argTypes)-1], "...") {
-			ellipsis = "..."
-		}
-		fmt.Fprintf(w, "%s(%s%s)\n", funcDecl.Name.Name, strings.Join(argNames, ", "), ellipsis)
-		fmt.Fprintf(w, "\treturn results, nil\n")
+		writeFuncCall()
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -319,26 +335,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 			}
 			fmt.Fprintf(w, "\t}\n")
 		}
-
-		if len(resultTypes) > 0 {
-			fmt.Fprintf(w, "\tresults = make([]interface{}, %d)\n", len(resultTypes))
-		}
-		fmt.Fprintf(w, "\t")
-		if len(resultTypes) > 0 {
-			for i := range resultTypes {
-				if i > 0 {
-					fmt.Fprintf(w, ", ")
-				}
-				fmt.Fprintf(w, "results[%d]", i)
-			}
-			fmt.Fprintf(w, " = ")
-		}
-		ellipsis := ""
-		if len(argTypes) > 0 && strings.HasPrefix(argTypes[len(argTypes)-1], "...") {
-			ellipsis = "..."
-		}
-		fmt.Fprintf(w, "%s(%s%s)\n", funcDecl.Name.Name, strings.Join(argNames, ", "), ellipsis)
-		fmt.Fprintf(w, "\treturn results, nil\n")
+		writeFuncCall()
 	}
 	fmt.Fprintf(w, "}\n\n")
 
