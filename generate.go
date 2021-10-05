@@ -17,14 +17,13 @@ import (
 	"golang.org/x/tools/imports"
 )
 
-func GenPackageFunctions(pkgDir, genFilename string, onlyFuncs ...string) error {
+func GeneratePackageFunctions(pkgDir, genFilename string, onlyFuncs ...string) error {
 	pkgName, funcs, err := parsePackage(pkgDir, genFilename, onlyFuncs...)
 	if err != nil {
 		return err
 	}
 
 	importLines := map[string]bool{
-		`"fmt"`:     true,
 		`"reflect"`: true,
 		`command "github.com/ungerik/go-command"`: true,
 	}
@@ -268,7 +267,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 				fmt.Fprintf(w, "\t\terr = command.AssignFromString(&%s, strs[%d])\n", argName, strsIndex)
 				fmt.Fprintf(w, "\t\tif err != nil {\n")
 				{
-					fmt.Fprintf(w, "\t\t\treturn nil, fmt.Errorf(\"string conversion error for argument %%s of function %%s: %%w\", %q, f, err)\n", argName)
+					fmt.Fprintf(w, "\t\t\treturn nil, command.NewErrArgFromString(err, f, %q)\n", argName)
 				}
 				fmt.Fprintf(w, "\t\t}\n")
 			}
@@ -314,7 +313,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 				fmt.Fprintf(w, "\t\terr = command.AssignFromString(&%s, str)\n", argName)
 				fmt.Fprintf(w, "\t\tif err != nil {\n")
 				{
-					fmt.Fprintf(w, "\t\t\treturn nil, fmt.Errorf(\"string conversion error for argument %%s of function %%s: %%w\", %q, f, err)\n", argName)
+					fmt.Fprintf(w, "\t\t\treturn nil, command.NewErrArgFromString(err, f, %q)\n", argName)
 				}
 				fmt.Fprintf(w, "\t\t}\n")
 			}

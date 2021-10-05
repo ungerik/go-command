@@ -13,7 +13,7 @@ func main() {
 		panic("need pkgDir argument")
 	}
 	pkgDir = os.Args[1]
-	err := command.GenPackageFunctions(pkgDir, "pkgfuncs.go")
+	err := command.GeneratePackageFunctions(pkgDir, "pkgfuncs.go")
 	if err != nil {
 		panic(err)
 	}
