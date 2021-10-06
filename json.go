@@ -14,7 +14,7 @@ func CallFunctionWithJSONArgs(ctx context.Context, f Function, jsonObject []byte
 	return f.Call(ctx, args)
 }
 
-func unmarshalJSONFunctionArgs(f Function, jsonObject []byte) (args []interface{}, err error) {
+func unmarshalJSONFunctionArgs(f FunctionInfo, jsonObject []byte) (args []interface{}, err error) {
 	argsJSON := make(map[string]json.RawMessage)
 	err = json.Unmarshal(jsonObject, &argsJSON)
 	if err != nil {

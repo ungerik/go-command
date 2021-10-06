@@ -4,11 +4,11 @@ import "fmt"
 
 type ErrParseArgString struct {
 	Err  error
-	Func Function
+	Func FunctionInfo
 	Arg  string
 }
 
-func NewErrParseArgString(err error, f Function, arg string) ErrParseArgString {
+func NewErrParseArgString(err error, f FunctionInfo, arg string) ErrParseArgString {
 	return ErrParseArgString{Err: err, Func: f, Arg: arg}
 }
 
@@ -22,11 +22,11 @@ func (e ErrParseArgString) Unwrap() error {
 
 type ErrParseArgJSON struct {
 	Err  error
-	Func Function
+	Func FunctionInfo
 	Arg  string
 }
 
-func NewErrParseArgJSON(err error, f Function, arg string) ErrParseArgJSON {
+func NewErrParseArgJSON(err error, f FunctionInfo, arg string) ErrParseArgJSON {
 	return ErrParseArgJSON{Err: err, Func: f, Arg: arg}
 }
 
