@@ -184,7 +184,11 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 		output.Write(fileData[nextSourceOffset:endOffset])
 		nextSourceOffset = fileSet.Position(decl.End()).Offset
 
-		err = WriteFunctionImpl(output, fun.File, fun.Decl, implName, pkgName)
+		fmt.Fprintf(output, "////////////////////////////////////////\n")
+		fmt.Fprintf(output, "// %s.%s\n\n", pkgName, fun.Decl.Name.Name)
+		fmt.Fprintf(output, "// %s wraps %s.%s as command.Function\n", implName, pkgName, fun.Decl.Name.Name)
+		fmt.Fprintf(output, "var %[1]s %[1]sT\n\n", implName)
+		err = WriteFunctionImpl(output, fun.File, fun.Decl, implName+"T", pkgName)
 		if err != nil {
 			return err
 		}

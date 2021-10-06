@@ -54,6 +54,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 		fmt.Fprintf(w, "\treturn results, err\n")
 	}
 
+	fmt.Fprintf(w, "// %s wraps %s%s as command.Function\n", implType, funcPackageSel, funcDecl.Name.Name)
 	fmt.Fprintf(w, "type %s struct{}\n\n", implType)
 
 	fmt.Fprintf(w, "func (%s) Name() string {\n", implType)
@@ -133,7 +134,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 				args[i] += ".(" + argType + ")"
 			}
 		}
-		writeFuncCall(argNames)
+		writeFuncCall(args)
 	}
 	fmt.Fprintf(w, "}\n\n")
 
