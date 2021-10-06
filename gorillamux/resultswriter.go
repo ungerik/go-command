@@ -7,22 +7,19 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"reflect"
 
 	"github.com/h2non/filetype"
 	"github.com/h2non/filetype/types"
-
-	command "github.com/ungerik/go-command"
 )
 
 type ResultsWriter interface {
-	WriteResults(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error
+	WriteResults(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error
 }
 
-type ResultsWriterFunc func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error
+type ResultsWriterFunc func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error
 
-func (f ResultsWriterFunc) WriteResults(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
-	return f(args, vars, resultVals, resultErr, writer, request)
+func (f ResultsWriterFunc) WriteResults(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	return f(results, resultErr, writer, request)
 }
 
 func encodeJSON(response interface{}) ([]byte, error) {
@@ -32,13 +29,13 @@ func encodeJSON(response interface{}) ([]byte, error) {
 	return json.Marshal(response)
 }
 
-var RespondJSON ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+var RespondJSON ResultsWriterFunc = func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 	if resultErr != nil {
 		return resultErr
 	}
 	var buf []byte
-	for _, resultVal := range resultVals {
-		b, err := encodeJSON(resultVal.Interface())
+	for _, result := range results {
+		b, err := encodeJSON(result)
 		if err != nil {
 			return err
 		}
@@ -51,13 +48,13 @@ var RespondJSON ResultsWriterFunc = func(args command.Args, vars map[string]stri
 
 // RespondBinary responds with contentType using the binary data from results of type []byte, string, or io.Reader.
 func RespondBinary(contentType string) ResultsWriterFunc {
-	return func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) (err error) {
+	return func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) (err error) {
 		if resultErr != nil {
 			return resultErr
 		}
 		var buf bytes.Buffer
-		for _, resultVal := range resultVals {
-			switch data := resultVal.Interface().(type) {
+		for _, result := range results {
+			switch data := result.(type) {
 			case []byte:
 				_, err = buf.Write(data)
 			case string:
@@ -65,7 +62,7 @@ func RespondBinary(contentType string) ResultsWriterFunc {
 			case io.Reader:
 				_, err = io.Copy(&buf, data)
 			default:
-				return fmt.Errorf("RespondBinary does not support result type %s", resultVal.Type())
+				return fmt.Errorf("RespondBinary does not support result type %T", result)
 			}
 			if err != nil {
 				return err
@@ -78,14 +75,14 @@ func RespondBinary(contentType string) ResultsWriterFunc {
 }
 
 func RespondJSONField(fieldName string) ResultsWriterFunc {
-	return func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) (err error) {
+	return func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) (err error) {
 		if resultErr != nil {
 			return resultErr
 		}
 		var buf []byte
 		m := make(map[string]interface{})
-		if len(resultVals) > 0 {
-			m[fieldName] = resultVals[0].Interface()
+		if len(results) > 0 {
+			m[fieldName] = results[0]
 		}
 		buf, err = encodeJSON(m)
 		if err != nil {
@@ -104,13 +101,13 @@ func encodeXML(response interface{}) ([]byte, error) {
 	return xml.Marshal(response)
 }
 
-var RespondXML ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+var RespondXML ResultsWriterFunc = func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 	if resultErr != nil {
 		return resultErr
 	}
 	var buf []byte
-	for _, resultVal := range resultVals {
-		b, err := encodeXML(resultVal.Interface())
+	for _, result := range results {
+		b, err := encodeXML(result)
 		if err != nil {
 			return err
 		}
@@ -121,13 +118,12 @@ var RespondXML ResultsWriterFunc = func(args command.Args, vars map[string]strin
 	return nil
 }
 
-var RespondPlaintext ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+var RespondPlaintext ResultsWriterFunc = func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 	if resultErr != nil {
 		return resultErr
 	}
 	var buf bytes.Buffer
-	for _, resultVal := range resultVals {
-		result := resultVal.Interface()
+	for _, result := range results {
 		if b, ok := result.([]byte); ok {
 			buf.Write(b)
 		} else {
@@ -139,13 +135,12 @@ var RespondPlaintext ResultsWriterFunc = func(args command.Args, vars map[string
 	return nil
 }
 
-var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+var RespondHTML ResultsWriterFunc = func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 	if resultErr != nil {
 		return resultErr
 	}
 	var buf bytes.Buffer
-	for _, resultVal := range resultVals {
-		result := resultVal.Interface()
+	for _, result := range results {
 		if b, ok := result.([]byte); ok {
 			buf.Write(b)
 		} else {
@@ -157,16 +152,16 @@ var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]stri
 	return nil
 }
 
-var RespondDetectContentType ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+var RespondDetectContentType ResultsWriterFunc = func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 	if resultErr != nil {
 		return resultErr
 	}
-	if len(resultVals) != 1 {
-		return fmt.Errorf("RespondDetectContentType needs 1 result, got %d", len(resultVals))
+	if len(results) != 1 {
+		return fmt.Errorf("RespondDetectContentType needs 1 result, got %d", len(results))
 	}
-	data, ok := resultVals[0].Interface().([]byte)
+	data, ok := results[0].([]byte)
 	if !ok {
-		return fmt.Errorf("RespondDetectContentType needs []byte result, got %s", resultVals[0].Type())
+		return fmt.Errorf("RespondDetectContentType needs []byte result, got %T", results[0])
 	}
 
 	writer.Header().Add("Content-Type", DetectContentType(data))
@@ -175,16 +170,16 @@ var RespondDetectContentType ResultsWriterFunc = func(args command.Args, vars ma
 }
 
 func RespondContentType(contentType string) ResultsWriter {
-	return ResultsWriterFunc(func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+	return ResultsWriterFunc(func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 		if resultErr != nil {
 			return resultErr
 		}
-		if len(resultVals) != 1 {
-			return fmt.Errorf("RespondDetectContentType needs 1 result, got %d", len(resultVals))
+		if len(results) != 1 {
+			return fmt.Errorf("RespondDetectContentType needs 1 result, got %d", len(results))
 		}
-		data, ok := resultVals[0].Interface().([]byte)
+		data, ok := results[0].([]byte)
 		if !ok {
-			return fmt.Errorf("RespondDetectContentType needs []byte result, got %s", resultVals[0].Type())
+			return fmt.Errorf("RespondDetectContentType needs []byte result, got %T", results[0])
 		}
 
 		writer.Header().Add("Content-Type", contentType)
@@ -193,7 +188,7 @@ func RespondContentType(contentType string) ResultsWriter {
 	})
 }
 
-var RespondNothing ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
+var RespondNothing ResultsWriterFunc = func(results []interface{}, resultErr error, writer http.ResponseWriter, request *http.Request) error {
 	return resultErr
 }
 

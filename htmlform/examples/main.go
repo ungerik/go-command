@@ -15,7 +15,7 @@ import (
 func main() {
 	httperr.DebugShowInternalErrorsInResponse = true
 
-	handler, err := htmlform.NewHandler(Example, &ExampleArgs, "Example Form", respond.StaticHTML("<h1>Success!</h1>"))
+	handler, err := htmlform.NewHandler(funcExample, "Example Form", respond.StaticHTML("<h1>Success!</h1>"))
 	if err != nil {
 		log.FatalAndPanic(err)
 	}
@@ -49,18 +49,18 @@ const (
 	ColorBlue
 )
 
-var ExampleArgs struct {
-	command.ArgsDef
+// var ExampleArgs struct {
+// 	command.ArgsDef
 
-	Bool  bool          `arg:"aBool"  desc:"A bool"`
-	Int   int           `arg:"anInt"  desc:"An integer"`
-	Float float64       `arg:"aFloat" desc:"A float"`
-	Color Color         `arg:"color"   desc:"Select a color"`
-	File  fs.FileReader `arg:"file"   desc:"Upload file"`
+// 	Bool  bool          `arg:"aBool"  desc:"A bool"`
+// 	Int   int           `arg:"anInt"  desc:"An integer"`
+// 	Float float64       `arg:"aFloat" desc:"A float"`
+// 	Color Color         `arg:"color"   desc:"Select a color"`
+// 	File  fs.FileReader `arg:"file"   desc:"Upload file"`
 
-	// Date  date.Date     `arg:"aDate"   desc:"A date"`
-	// Time  time.Time     `arg:"aTime"   desc:"A date and time"`
-}
+// 	// Date  date.Date     `arg:"aDate"   desc:"A date"`
+// 	// Time  time.Time     `arg:"aTime"   desc:"A date and time"`
+// }
 
 func Example(aBool bool, anInt int, aFloat float64, color Color, file fs.FileReader /*, aDate date.Date, aTime time.Time*/) error {
 	log.Info("Example").
@@ -75,3 +75,5 @@ func Example(aBool bool, anInt int, aFloat float64, color Color, file fs.FileRea
 
 	return nil
 }
+
+var funcExample = command.GenerateFunctionTODO(Example)

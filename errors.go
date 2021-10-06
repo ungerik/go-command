@@ -2,20 +2,38 @@ package command
 
 import "fmt"
 
-type ErrArgFromString struct {
+type ErrParseArgString struct {
 	Err  error
 	Func Function
 	Arg  string
 }
 
-func NewErrArgFromString(err error, f Function, arg string) ErrArgFromString {
-	return ErrArgFromString{Err: err, Func: f, Arg: arg}
+func NewErrParseArgString(err error, f Function, arg string) ErrParseArgString {
+	return ErrParseArgString{Err: err, Func: f, Arg: arg}
 }
 
-func (e ErrArgFromString) Error() string {
+func (e ErrParseArgString) Error() string {
 	return fmt.Sprintf("string conversion error for argument %s of function %s: %s", e.Arg, e.Func, e.Err)
 }
 
-func (e ErrArgFromString) Unwrap() error {
+func (e ErrParseArgString) Unwrap() error {
+	return e.Err
+}
+
+type ErrParseArgJSON struct {
+	Err  error
+	Func Function
+	Arg  string
+}
+
+func NewErrParseArgJSON(err error, f Function, arg string) ErrParseArgJSON {
+	return ErrParseArgJSON{Err: err, Func: f, Arg: arg}
+}
+
+func (e ErrParseArgJSON) Error() string {
+	return fmt.Sprintf("error unmarshalling JSON for argument %s of function %s: %s", e.Arg, e.Func, e.Err)
+}
+
+func (e ErrParseArgJSON) Unwrap() error {
 	return e.Err
 }

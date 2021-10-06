@@ -31,8 +31,7 @@ type formField struct {
 }
 
 type Handler struct {
-	cmdFunc         command.StringMapArgsFunc
-	args            command.Args
+	commandFunc     command.Function
 	argValidator    map[string]types.ValidatErr
 	argRequired     map[string]bool
 	argOptions      map[string][]Option
@@ -47,9 +46,9 @@ type Handler struct {
 	successHandler http.Handler
 }
 
-func NewHandler(commandFunc interface{}, args command.Args, title string, successHandler http.Handler) (handler *Handler, err error) {
+func NewHandler(commandFunc command.Function, title string, successHandler http.Handler) (handler *Handler, err error) {
 	handler = &Handler{
-		args:            args,
+		commandFunc:     commandFunc,
 		argValidator:    make(map[string]types.ValidatErr),
 		argRequired:     make(map[string]bool),
 		argOptions:      make(map[string][]Option),
@@ -59,10 +58,6 @@ func NewHandler(commandFunc interface{}, args command.Args, title string, succes
 	}
 	handler.form.Title = title
 	handler.form.SubmitButtonText = "Submit"
-	handler.cmdFunc, err = command.GetStringMapArgsFunc(commandFunc, args)
-	if err != nil {
-		return nil, err
-	}
 	handler.template, err = template.New("form").Parse(FormTemplate)
 	if err != nil {
 		return nil, err
@@ -70,8 +65,8 @@ func NewHandler(commandFunc interface{}, args command.Args, title string, succes
 	return handler, nil
 }
 
-func MustNewHandler(commandFunc interface{}, args command.Args, title string, successHandler http.Handler) (handler *Handler) {
-	handler, err := NewHandler(commandFunc, args, title, successHandler)
+func MustNewHandler(commandFunc command.Function, title string, successHandler http.Handler) (handler *Handler) {
+	handler, err := NewHandler(commandFunc, title, successHandler)
 	if err != nil {
 		panic(err)
 	}
@@ -121,39 +116,45 @@ func (handler *Handler) ServeHTTP(response http.ResponseWriter, request *http.Re
 
 func (handler *Handler) get(response http.ResponseWriter, request *http.Request) {
 	handler.form.Fields = nil
-	for _, arg := range handler.args.Args() {
+
+	var (
+		argDescriptions = handler.commandFunc.ArgDescriptions()
+		argTypes        = handler.commandFunc.ArgTypes()
+	)
+	for i, argName := range handler.commandFunc.ArgNames() {
+		argType := argTypes[i]
 		field := formField{
-			Name:     arg.Name,
-			Label:    arg.Description,
+			Name:     argName,
+			Label:    argDescriptions[i],
 			Type:     "text",
 			Required: true,
 		}
 		if field.Label == "" {
-			field.Label = arg.Name
+			field.Label = argName
 		}
-		if defaultValue, ok := handler.argDefaultValue[arg.Name]; ok {
+		if defaultValue, ok := handler.argDefaultValue[argName]; ok {
 			field.Value = fmt.Sprint(defaultValue)
 		}
-		if required, ok := handler.argRequired[arg.Name]; ok {
+		if required, ok := handler.argRequired[argName]; ok {
 			field.Required = required
 		}
-		options, isSelect := handler.argOptions[arg.Name]
+		options, isSelect := handler.argOptions[argName]
 		switch {
 		case isSelect:
 			field.Type = "select"
 			field.Options = options
 
-		case arg.Type.Implements(typeOfFileReader):
+		case argType.Implements(typeOfFileReader):
 			field.Type = "file"
 
-		// case arg.Type == reflect.TypeOf(date.Date("")) || arg.Type == reflect.TypeOf(date.NullableDate("")):
+		// case argType == reflect.TypeOf(date.Date("")) || argType == reflect.TypeOf(date.NullableDate("")):
 		// 	field.Type = "date"
 
-		// case arg.Type == reflect.TypeOf(time.Time{}):
+		// case argType == reflect.TypeOf(time.Time{}):
 		// 	field.Type = "datetime-local"
 
 		default:
-			switch arg.Type.Kind() {
+			switch argType.Kind() {
 			case reflect.Bool:
 				field.Type = "checkbox"
 			case reflect.Float32, reflect.Float64:
@@ -165,7 +166,7 @@ func (handler *Handler) get(response http.ResponseWriter, request *http.Request)
 			}
 		}
 
-		if inputType, ok := handler.argInputType[arg.Name]; ok {
+		if inputType, ok := handler.argInputType[argName]; ok {
 			field.Type = inputType
 		}
 
@@ -195,7 +196,7 @@ func (handler *Handler) post(response http.ResponseWriter, request *http.Request
 		argsMap[key] = string(file)
 	}
 
-	err = handler.cmdFunc(request.Context(), argsMap)
+	_, err = handler.commandFunc.CallWithNamedStrings(request.Context(), argsMap)
 	if err != nil {
 		httperr.Handle(err, response, request)
 		return

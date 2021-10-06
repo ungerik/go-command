@@ -7,6 +7,8 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/ungerik/go-reflection"
 )
 
 type constError string
@@ -24,8 +26,7 @@ const (
 type stringArgsCommand struct {
 	command         string
 	description     string
-	args            Args
-	commandFunc     interface{}
+	commandFunc     Function
 	stringArgsFunc  StringArgsFunc
 	resultsHandlers []ResultsHandler
 }
@@ -65,53 +66,43 @@ func NewStringArgsDispatcher(loggers ...StringArgsCommandLogger) *StringArgsDisp
 	}
 }
 
-func (disp *StringArgsDispatcher) AddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
+func (disp *StringArgsDispatcher) AddCommand(command, description string, commandFunc Function, resultsHandlers ...ResultsHandler) error {
 	if _, exists := disp.comm[command]; exists {
 		return fmt.Errorf("Command '%s' already added", command)
 	}
 	if err := checkCommandChars(command); err != nil {
 		return fmt.Errorf("Command '%s' returned: %w", command, err)
 	}
-	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
-	if err != nil {
-		return fmt.Errorf("Command '%s' returned: %w", command, err)
-	}
 	disp.comm[command] = &stringArgsCommand{
 		command:         command,
 		description:     description,
-		args:            args,
 		commandFunc:     commandFunc,
-		stringArgsFunc:  stringArgsFunc,
+		stringArgsFunc:  NewStringArgsFunc(commandFunc, resultsHandlers...),
 		resultsHandlers: resultsHandlers,
 	}
 	return nil
 }
 
-func (disp *StringArgsDispatcher) MustAddCommand(command, description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) {
-	err := disp.AddCommand(command, description, commandFunc, args, resultsHandlers...)
+func (disp *StringArgsDispatcher) MustAddCommand(command, description string, commandFunc Function, resultsHandlers ...ResultsHandler) {
+	err := disp.AddCommand(command, description, commandFunc, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (disp *StringArgsDispatcher) AddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
-	stringArgsFunc, err := GetStringArgsFunc(commandFunc, args, resultsHandlers...)
-	if err != nil {
-		return fmt.Errorf("Default command: %w", err)
-	}
+func (disp *StringArgsDispatcher) AddDefaultCommand(description string, commandFunc Function, resultsHandlers ...ResultsHandler) error {
 	disp.comm[Default] = &stringArgsCommand{
 		command:         Default,
 		description:     description,
-		args:            args,
 		commandFunc:     commandFunc,
-		stringArgsFunc:  stringArgsFunc,
+		stringArgsFunc:  NewStringArgsFunc(commandFunc, resultsHandlers...),
 		resultsHandlers: resultsHandlers,
 	}
 	return nil
 }
 
-func (disp *StringArgsDispatcher) MustAddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) {
-	err := disp.AddDefaultCommand(description, commandFunc, args, resultsHandlers...)
+func (disp *StringArgsDispatcher) MustAddDefaultCommand(description string, commandFunc Function, resultsHandlers ...ResultsHandler) {
+	err := disp.AddDefaultCommand(description, commandFunc, resultsHandlers...)
 	if err != nil {
 		panic(err)
 	}
@@ -183,23 +174,36 @@ func (disp *StringArgsDispatcher) PrintCommands(appName string) {
 	})
 
 	for _, cmd := range list {
-		CommandUsageColor.Printf("  %s %s %s\n", appName, cmd.command, cmd.args)
+		CommandUsageColor.Printf("  %s %s %s\n", appName, cmd.command, functionArgsString(cmd.commandFunc))
 		if cmd.description != "" {
 			CommandDescriptionColor.Printf("      %s\n", cmd.description)
 		}
 		hasAnyArgDesc := false
-		for _, arg := range cmd.args.Args() {
-			if arg.Description != "" {
+		for _, desc := range cmd.commandFunc.ArgDescriptions() {
+			if desc != "" {
 				hasAnyArgDesc = true
 			}
 		}
 		if hasAnyArgDesc {
-			for _, arg := range cmd.args.Args() {
-				CommandDescriptionColor.Printf("          <%s:%s> %s\n", arg.Name, arg.Type, arg.Description)
+			for i, desc := range cmd.commandFunc.ArgDescriptions() {
+				CommandDescriptionColor.Printf("          <%s:%s> %s\n", cmd.commandFunc.ArgNames()[i], reflection.DerefType(cmd.commandFunc.ArgTypes()[i]), desc)
 			}
 		}
 		CommandDescriptionColor.Println()
 	}
+}
+
+func functionArgsString(f Function) string {
+	b := strings.Builder{}
+	argNames := f.ArgNames()
+	argTypes := f.ArgTypes()
+	for i := range argNames {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		fmt.Fprintf(&b, "<%s:%s>", argNames[i], reflection.DerefType(argTypes[i]))
+	}
+	return b.String()
 }
 
 func (disp *StringArgsDispatcher) PrintCommandsUsageIntro(appName string, output io.Writer) {

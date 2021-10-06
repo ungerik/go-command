@@ -13,9 +13,7 @@ import (
 	"github.com/ungerik/go-httpx/httperr"
 )
 
-func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
-	cmdFunc := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
-
+func CommandHandler(commandFunc command.Function, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
 			defer func() {
@@ -25,18 +23,16 @@ func CommandHandler(commandFunc interface{}, args command.Args, resultsWriter Re
 
 		vars := mux.Vars(request)
 
-		resultVals, err := cmdFunc(request.Context(), vars)
+		results, err := commandFunc.CallWithNamedStrings(request.Context(), vars)
 
 		if resultsWriter != nil {
-			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
+			err = resultsWriter.WriteResults(results, err, writer, request)
 		}
 		handleErr(err, writer, request, errHandlers)
 	}
 }
 
-func CommandHandlerWithQueryParams(commandFunc interface{}, args command.Args, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
-	cmdFunc := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
-
+func CommandHandlerWithQueryParams(commandFunc command.Function, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
 			defer func() {
@@ -46,18 +42,18 @@ func CommandHandlerWithQueryParams(commandFunc interface{}, args command.Args, r
 
 		vars := mux.Vars(request)
 
-		// Add query params as arguments by joining them together per key (query
-		// param names are not unique).
+		// Add query params as arguments by joining them together per key
+		// (query param names are not unique).
 		for k := range request.URL.Query() {
 			if len(request.URL.Query()[k]) > 0 && len(request.URL.Query()[k][0]) > 0 {
 				vars[k] = strings.Join(request.URL.Query()[k][:], ";")
 			}
 		}
 
-		resultVals, err := cmdFunc(request.Context(), vars)
+		results, err := commandFunc.CallWithNamedStrings(request.Context(), vars)
 
 		if resultsWriter != nil {
-			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
+			err = resultsWriter.WriteResults(results, err, writer, request)
 		}
 		handleErr(err, writer, request, errHandlers)
 	}
@@ -84,9 +80,7 @@ func RequestBodyAsArg(name string) RequestBodyArgConverterFunc {
 	}
 }
 
-func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, commandFunc interface{}, args command.Args, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
-	cmdFunc := command.MustGetStringMapArgsResultValuesFunc(commandFunc, args)
-
+func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, commandFunc command.Function, resultsWriter ResultsWriter, errHandlers ...httperr.Handler) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		if CatchPanics {
 			defer func() {
@@ -107,10 +101,10 @@ func CommandHandlerRequestBodyArg(bodyConverter RequestBodyArgConverter, command
 		}
 		vars[name] = value
 
-		resultVals, err := cmdFunc(request.Context(), vars)
+		results, err := commandFunc.CallWithNamedStrings(request.Context(), vars)
 
 		if resultsWriter != nil {
-			err = resultsWriter.WriteResults(args, vars, resultVals, err, writer, request)
+			err = resultsWriter.WriteResults(results, err, writer, request)
 		}
 		handleErr(err, writer, request, errHandlers)
 	}

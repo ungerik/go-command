@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/ast"
-	"go/build"
 	"go/parser"
 	"go/token"
 	"io/ioutil"
@@ -100,6 +99,7 @@ func filterGoFiles(excludeFilenames ...string) func(info os.FileInfo) bool {
 }
 
 func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
+	fileDir := filepath.Dir(filePath)
 	fileData, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -130,11 +130,14 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 
 	importFuncs := make(map[string]map[string]funcInfo)
 	for pkgName, pkgImportPath := range imports {
-		pkgDir, err := modulePath(pkgImportPath)
+		_, pkgSourceDir, stdPkg, err := loadModuleInfo(fileDir, pkgImportPath)
 		if err != nil {
 			return err
 		}
-		_, funcs, err := parsePackage(pkgDir, "")
+		if stdPkg {
+			continue
+		}
+		_, funcs, err := parsePackage(pkgSourceDir, "")
 		if err != nil {
 			return err
 		}
@@ -199,13 +202,4 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 		}
 	}
 	return nil
-}
-
-func modulePath(pkgImportPath string) (string, error) {
-	// TODO proper module resolve
-	path := filepath.Join(build.Default.GOPATH, "src", pkgImportPath)
-	if _, err := os.Stat(path); err != nil {
-		return "", err
-	}
-	return path, nil
 }

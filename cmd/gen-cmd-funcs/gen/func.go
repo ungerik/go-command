@@ -9,6 +9,7 @@ import (
 
 func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, implType, funcPackageSel string) error {
 	argNames := funcDeclArgNames(funcDecl)
+	argDescriptions := make([]string, len(argNames)) // TODO
 	argTypes := funcDeclArgTypes(funcDecl)
 	if len(argNames) != len(argTypes) {
 		panic("len(argNames) != len(argTypes)")
@@ -20,7 +21,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 		funcPackageSel += "."
 	}
 
-	writeFuncCall := func() {
+	writeFuncCall := func(args []string) {
 		numResultsWithoutErr := len(resultTypes)
 		if hasErrorResult {
 			numResultsWithoutErr--
@@ -49,7 +50,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 		if len(argTypes) > 0 && strings.HasPrefix(argTypes[len(argTypes)-1], "...") {
 			ellipsis = "..."
 		}
-		fmt.Fprintf(w, "%s%s(%s%s)\n", funcPackageSel, funcDecl.Name.Name, strings.Join(argNames, ", "), ellipsis)
+		fmt.Fprintf(w, "%s%s(%s%s)\n", funcPackageSel, funcDecl.Name.Name, strings.Join(args, ", "), ellipsis)
 		fmt.Fprintf(w, "\treturn results, err\n")
 	}
 
@@ -71,6 +72,12 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 	fmt.Fprintf(w, "func (%s) ArgNames() []string {\n", implType)
 	{
 		fmt.Fprintf(w, "\treturn %#v\n", argNames)
+	}
+	fmt.Fprintf(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (%s) ArgDescriptions() []string {\n", implType)
+	{
+		fmt.Fprintf(w, "\treturn %#v\n", argDescriptions)
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -103,9 +110,32 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 		ctxArgName = "_"
 	}
 	strsArgName := "strs"
+	argsArgName := "args"
 	if len(argNames) == 0 || hasContextArg && len(argNames) == 1 {
 		strsArgName = "_"
+		argsArgName = "_"
 	}
+
+	fmt.Fprintf(w, "func (f %s) Call(%s context.Context, %s []interface{}) (results []interface{}, err error) {\n", implType, ctxArgName, argsArgName)
+	{
+		args := make([]string, len(argTypes))
+		for i, argType := range argTypes {
+			if i == 0 && hasContextArg {
+				args[0] = "ctx"
+				continue
+			}
+			argsIndex := i
+			if hasContextArg {
+				argsIndex--
+			}
+			args[i] = fmt.Sprintf("args[%d]", argsIndex)
+			if argType != "interface{}" {
+				args[i] += ".(" + argType + ")"
+			}
+		}
+		writeFuncCall(argNames)
+	}
+	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (f %s) CallWithStrings(%s context.Context, %s ...string) (results []interface{}, err error) {\n", implType, ctxArgName, strsArgName)
 	{
@@ -128,13 +158,13 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 				fmt.Fprintf(w, "\t\terr = command.AssignFromString(&%s, strs[%d])\n", argName, strsIndex)
 				fmt.Fprintf(w, "\t\tif err != nil {\n")
 				{
-					fmt.Fprintf(w, "\t\t\treturn nil, command.NewErrArgFromString(err, f, %q)\n", argName)
+					fmt.Fprintf(w, "\t\t\treturn nil, command.NewErrParseArgString(err, f, %q)\n", argName)
 				}
 				fmt.Fprintf(w, "\t\t}\n")
 			}
 			fmt.Fprintf(w, "\t}\n")
 		}
-		writeFuncCall()
+		writeFuncCall(argNames)
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -155,13 +185,13 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 				fmt.Fprintf(w, "\t\terr = command.AssignFromString(&%s, str)\n", argName)
 				fmt.Fprintf(w, "\t\tif err != nil {\n")
 				{
-					fmt.Fprintf(w, "\t\t\treturn nil, command.NewErrArgFromString(err, f, %q)\n", argName)
+					fmt.Fprintf(w, "\t\t\treturn nil, command.NewErrParseArgString(err, f, %q)\n", argName)
 				}
 				fmt.Fprintf(w, "\t\t}\n")
 			}
 			fmt.Fprintf(w, "\t}\n")
 		}
-		writeFuncCall()
+		writeFuncCall(argNames)
 	}
 	fmt.Fprintf(w, "}\n\n")
 

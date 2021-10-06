@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"sort"
+
+	"github.com/ungerik/go-reflection"
 )
 
 type SuperCommandNotFound string
@@ -47,16 +49,16 @@ func (disp *SuperStringArgsDispatcher) MustAddSuperCommand(superCommand string) 
 	return subDisp
 }
 
-func (disp *SuperStringArgsDispatcher) AddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) error {
+func (disp *SuperStringArgsDispatcher) AddDefaultCommand(description string, commandFunc Function, resultsHandlers ...ResultsHandler) error {
 	subDisp, err := disp.AddSuperCommand(Default)
 	if err != nil {
 		return err
 	}
-	return subDisp.AddDefaultCommand(description, commandFunc, args, resultsHandlers...)
+	return subDisp.AddDefaultCommand(description, commandFunc, resultsHandlers...)
 }
 
-func (disp *SuperStringArgsDispatcher) MustAddDefaultCommand(description string, commandFunc interface{}, args Args, resultsHandlers ...ResultsHandler) {
-	err := disp.AddDefaultCommand(description, commandFunc, args, resultsHandlers...)
+func (disp *SuperStringArgsDispatcher) MustAddDefaultCommand(description string, commandFunc Function, resultsHandlers ...ResultsHandler) {
+	err := disp.AddDefaultCommand(description, commandFunc, resultsHandlers...)
 	if err != nil {
 		panic(fmt.Errorf("MustAddDefaultCommand(%s): %w", description, err))
 	}
@@ -160,19 +162,19 @@ func (disp *SuperStringArgsDispatcher) PrintCommands(appName string) {
 			command += " " + cmd.command
 		}
 
-		CommandUsageColor.Printf("  %s %s %s\n", appName, command, cmd.args)
+		CommandUsageColor.Printf("  %s %s %s\n", appName, command, functionArgsString(cmd.commandFunc))
 		if cmd.description != "" {
 			CommandDescriptionColor.Printf("      %s\n", cmd.description)
 		}
 		hasAnyArgDesc := false
-		for _, arg := range cmd.args.Args() {
-			if arg.Description != "" {
+		for _, desc := range cmd.commandFunc.ArgDescriptions() {
+			if desc != "" {
 				hasAnyArgDesc = true
 			}
 		}
 		if hasAnyArgDesc {
-			for _, arg := range cmd.args.Args() {
-				CommandDescriptionColor.Printf("          <%s:%s> %s\n", arg.Name, arg.Type, arg.Description)
+			for _, desc := range cmd.commandFunc.ArgDescriptions() {
+				CommandDescriptionColor.Printf("          <%s:%s> %s\n", cmd.commandFunc.ArgNames()[i], reflection.DerefType(cmd.commandFunc.ArgTypes()[i]), desc)
 			}
 		}
 		CommandDescriptionColor.Println()
