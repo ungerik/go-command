@@ -5,6 +5,8 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
+	"strings"
 )
 
 type funcInfo struct {
@@ -62,6 +64,21 @@ func parsePackage(pkgDir, excludeFilename string, onlyFuncs ...string) (pkgName 
 		}
 	}
 	return pkgName, funcs, nil
+}
+
+func filterGoFiles(excludeFilenames ...string) func(info os.FileInfo) bool {
+	return func(info os.FileInfo) bool {
+		name := info.Name()
+		for _, exclude := range excludeFilenames {
+			if name == exclude {
+				return false
+			}
+		}
+		if strings.HasSuffix(name, "_test.go") {
+			return false
+		}
+		return true
+	}
 }
 
 // func parsePackage2(pkgDir, genFilename string, onlyFuncs ...string) (pkgName string, funcs map[*ast.FuncDecl]*ast.File, err error) {

@@ -7,7 +7,6 @@ import (
 	"go/parser"
 	"go/token"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -82,21 +81,6 @@ func PackageFunctions(pkgDir, genFilename, namePrefix string, printOnly bool, on
 	// }
 
 	return nil
-}
-
-func filterGoFiles(excludeFilenames ...string) func(info os.FileInfo) bool {
-	return func(info os.FileInfo) bool {
-		name := info.Name()
-		for _, exclude := range excludeFilenames {
-			if name == exclude {
-				return false
-			}
-		}
-		if strings.HasSuffix(name, "_test.go") {
-			return false
-		}
-		return true
-	}
 }
 
 func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
@@ -209,4 +193,119 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 		}
 	}
 	return nil
+}
+
+type funcImpl struct {
+	VarName     string
+	CallFunc    string
+	Type        string
+	DeclIndices []int
+}
+
+func findFuncImpls(file *ast.File) []*funcImpl {
+	ordered := make([]*funcImpl, 0)
+	named := make(map[string]*funcImpl)
+	typed := make(map[string]*funcImpl)
+
+	for i, decl := range file.Decls {
+		switch d := decl.(type) {
+		case *ast.GenDecl:
+			if len(d.Specs) != 1 {
+				continue
+			}
+			valueSpec, ok := d.Specs[0].(*ast.ValueSpec)
+			if !ok || len(valueSpec.Names) != 1 {
+				continue
+			}
+			switch d.Tok {
+			case token.VAR:
+				implVarName := valueSpec.Names[0].Name
+
+				if len(valueSpec.Values) == 0 {
+					// Example:
+					//   // documentCanUserRead wraps document.CanUserRead as command.Function
+					//   var documentCanUserRead documentCanUserReadT
+					comment := valueSpec.Comment.Text()
+					prefix := implVarName + " wraps "
+					suffix := " as command.Function"
+					if !strings.HasPrefix(comment, prefix) || !strings.HasSuffix(comment, suffix) {
+						continue
+					}
+					callFunc := comment[len(prefix) : len(comment)-len(suffix)]
+					impl := named[implVarName]
+					if impl == nil {
+						impl = new(funcImpl)
+						ordered = append(ordered, impl)
+						named[implVarName] = impl
+					}
+					impl.VarName = implVarName
+					impl.CallFunc = callFunc
+					impl.DeclIndices = append(impl.DeclIndices, i)
+					impl.Type = astvisit.ExprString(valueSpec.Type)
+					typed[impl.Type] = impl
+					continue
+				}
+
+				if len(valueSpec.Values) != 1 {
+					continue
+				}
+				callExpr, ok := valueSpec.Values[0].(*ast.CallExpr)
+				if !ok || len(callExpr.Args) != 1 || astvisit.ExprString(callExpr.Fun) != "command.GenerateFunctionTODO" {
+					continue
+				}
+				impl := named[implVarName]
+				if impl == nil {
+					impl = new(funcImpl)
+					ordered = append(ordered, impl)
+					named[implVarName] = impl
+				}
+				impl.VarName = implVarName
+				impl.CallFunc = astvisit.ExprString(callExpr.Args[0])
+				impl.DeclIndices = append(impl.DeclIndices, i)
+
+			case token.TYPE:
+				if len(valueSpec.Values) != 1 || astvisit.ExprString(valueSpec.Values[0]) != "struct{}" {
+					continue
+				}
+				implTypeName := valueSpec.Names[0].Name
+				// Example:
+				//   // documentCanUserReadT wraps document.CanUserRead as command.Function
+				//   type documentCanUserReadT struct{}
+				comment := valueSpec.Comment.Text()
+				prefix := implTypeName + " wraps "
+				suffix := " as command.Function"
+				if !strings.HasPrefix(comment, prefix) || !strings.HasSuffix(comment, suffix) {
+					continue
+				}
+				callFunc := comment[len(prefix) : len(comment)-len(suffix)]
+				impl := typed[implTypeName]
+				if impl == nil {
+					impl = new(funcImpl)
+					ordered = append(ordered, impl)
+					typed[implTypeName] = impl
+					impl.Type = implTypeName
+					// No var with that type declared
+					// so also use the type like a var
+					// and let the user instanciate the type with {}
+					named[implTypeName] = impl
+					impl.VarName = implTypeName
+				}
+				impl.CallFunc = callFunc
+				impl.DeclIndices = append(impl.DeclIndices, i)
+			}
+
+		case *ast.FuncDecl:
+			if d.Recv.NumFields() != 1 {
+				continue
+			}
+			recvType := astvisit.ExprString(d.Recv.List[0].Type)
+			impl := typed[recvType]
+			if impl == nil {
+				continue
+			}
+			impl.DeclIndices = append(impl.DeclIndices, i)
+		}
+	}
+
+	return ordered
 }
