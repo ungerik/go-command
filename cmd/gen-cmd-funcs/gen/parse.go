@@ -18,8 +18,8 @@ type funcInfo struct {
 }
 
 func parsePackage(pkgDir, excludeFilename string, onlyFuncs ...string) (pkgName string, funcs map[string]funcInfo, err error) {
-	fileSet := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fileSet, pkgDir, filterGoFiles(excludeFilename), 0)
+	fset := token.NewFileSet()
+	pkgs, err := parser.ParseDir(fset, pkgDir, filterGoFiles(excludeFilename), 0)
 	if err != nil {
 		return "", nil, err
 	}

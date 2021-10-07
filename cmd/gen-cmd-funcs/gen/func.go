@@ -5,6 +5,8 @@ import (
 	"go/ast"
 	"io"
 	"strings"
+
+	"github.com/ungerik/go-astvisit"
 )
 
 func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, implType, funcPackageSel string) error {
@@ -54,7 +56,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 		fmt.Fprintf(w, "\treturn results, err\n")
 	}
 
-	fmt.Fprintf(w, "// %s wraps %s%s as command.Function\n", implType, funcPackageSel, funcDecl.Name.Name)
+	fmt.Fprintf(w, "// %s wraps %s%s as command.Function (generated code)\n", implType, funcPackageSel, funcDecl.Name.Name)
 	fmt.Fprintf(w, "type %s struct{}\n\n", implType)
 
 	fmt.Fprintf(w, "func (%s) Name() string {\n", implType)
@@ -62,7 +64,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (%s) String() string {\n", implType)
-	fmt.Fprintf(w, "\treturn \"%s%s\"\n", funcDecl.Name.Name, funcTypeString(funcDecl.Type))
+	fmt.Fprintf(w, "\treturn \"%s%s\"\n", funcDecl.Name.Name, astvisit.FuncTypeString(funcDecl.Type))
 	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (%s) NumArgs() int      { return %d }\n", implType, len(argTypes))
@@ -210,7 +212,7 @@ func FunctionImplString(file *ast.File, funcDecl *ast.FuncDecl, implType, funcPa
 
 func GetFunctionImports(outImportLines map[string]bool, file *ast.File, funcDecl *ast.FuncDecl) error {
 	funcSelectors := make(map[string]struct{})
-	astExprSelectors(funcDecl.Type, funcSelectors)
+	recursiveExprSelectors(funcDecl.Type, funcSelectors)
 	// fmt.Println(funcSelectors)
 	for _, imp := range file.Imports {
 		if imp.Name != nil {

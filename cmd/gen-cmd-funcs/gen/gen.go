@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ungerik/go-astvisit"
 	"golang.org/x/tools/imports"
 )
 
@@ -104,8 +105,8 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 	if err != nil {
 		return err
 	}
-	fileSet := token.NewFileSet()
-	file, err := parser.ParseFile(fileSet, filePath, fileData, parser.DeclarationErrors)
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, filePath, fileData, parser.DeclarationErrors)
 	if err != nil {
 		return err
 	}
@@ -144,7 +145,7 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 		importFuncs[pkgName] = funcs
 	}
 
-	output := bytes.NewBuffer(nil)
+	buf := bytes.NewBuffer(nil)
 	nextSourceOffset := 0
 	for _, decl := range file.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
@@ -161,15 +162,15 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 		}
 		implName := valueSpec.Names[0].Name
 		callExpr, ok := valueSpec.Values[0].(*ast.CallExpr)
-		if !ok || len(callExpr.Args) != 1 || astExprString(callExpr.Fun) != "command.GenerateFunctionTODO" {
+		if !ok || len(callExpr.Args) != 1 || astvisit.ExprString(callExpr.Fun) != "command.GenerateFunctionTODO" {
 			continue
 		}
 		sel, ok := callExpr.Args[0].(*ast.SelectorExpr)
 		if !ok {
 			continue
 		}
-		pkgName := astExprString(sel.X)
-		funcName := astExprString(sel.Sel)
+		pkgName := astvisit.ExprString(sel.X)
+		funcName := astvisit.ExprString(sel.Sel)
 		pkgFuncs, ok := importFuncs[pkgName]
 		if !ok {
 			continue
@@ -180,27 +181,29 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 		}
 		// Found a function to replace the placeholder variable,
 		// write all unwritten source bytes until variable declaraton
-		endOffset := fileSet.Position(decl.Pos()).Offset
-		output.Write(fileData[nextSourceOffset:endOffset])
-		nextSourceOffset = fileSet.Position(decl.End()).Offset
+		endOffset := fset.Position(decl.Pos()).Offset
+		buf.Write(fileData[nextSourceOffset:endOffset])
+		nextSourceOffset = fset.Position(decl.End()).Offset
 
-		fmt.Fprintf(output, "////////////////////////////////////////\n")
-		fmt.Fprintf(output, "// %s.%s\n\n", pkgName, fun.Decl.Name.Name)
-		fmt.Fprintf(output, "// %s wraps %s.%s as command.Function\n", implName, pkgName, fun.Decl.Name.Name)
-		fmt.Fprintf(output, "var %[1]s %[1]sT\n\n", implName)
-		err = WriteFunctionImpl(output, fun.File, fun.Decl, implName+"T", pkgName)
+		fmt.Fprintf(buf, "////////////////////////////////////////\n")
+		fmt.Fprintf(buf, "// %s.%s\n\n", pkgName, fun.Decl.Name.Name)
+		fmt.Fprintf(buf, "// %s wraps %s.%s as command.Function (generated code)\n", implName, pkgName, fun.Decl.Name.Name)
+		fmt.Fprintf(buf, "var %[1]s %[1]sT\n\n", implName)
+		err = WriteFunctionImpl(buf, fun.File, fun.Decl, implName+"T", pkgName)
 		if err != nil {
 			return err
 		}
+
+		// format.Node(buf)
 	}
 	// Write unwritten rest of original source bytes
-	output.Write(fileData[nextSourceOffset:])
+	buf.Write(fileData[nextSourceOffset:])
 
 	if printOnly {
-		fmt.Println(output.String())
+		fmt.Println(buf.String())
 	} else {
 		fmt.Println("Writing file", filePath)
-		err = ioutil.WriteFile(filePath, output.Bytes(), 0660)
+		err = ioutil.WriteFile(filePath, buf.Bytes(), 0660)
 		if err != nil {
 			return err
 		}
