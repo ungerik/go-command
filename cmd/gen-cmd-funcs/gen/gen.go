@@ -131,14 +131,14 @@ func RewriteGenerateFunctionTODOs(filePath string, printOnly bool) (err error) {
 
 	importFuncs := make(map[string]map[string]funcInfo)
 	for pkgName, pkgImportPath := range imports {
-		_, pkgSourceDir, stdPkg, err := loadModuleInfo(fileDir, pkgImportPath)
+		loc, err := astvisit.LocatePackage(fileDir, pkgImportPath)
 		if err != nil {
 			return err
 		}
-		if stdPkg {
+		if loc.Std {
 			continue
 		}
-		_, funcs, err := parsePackage(pkgSourceDir, "")
+		_, funcs, err := parsePackage(loc.SourcePath, "")
 		if err != nil {
 			return err
 		}

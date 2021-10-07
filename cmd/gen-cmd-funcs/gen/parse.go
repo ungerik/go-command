@@ -3,13 +3,8 @@ package gen
 import (
 	"fmt"
 	"go/ast"
-	"go/build"
 	"go/parser"
 	"go/token"
-	"path/filepath"
-	"strings"
-
-	"golang.org/x/tools/go/packages"
 )
 
 type funcInfo struct {
@@ -110,44 +105,3 @@ func parsePackage(pkgDir, excludeFilename string, onlyFuncs ...string) (pkgName 
 // 	}
 // 	return pkgName, funcs, nil
 // }
-
-func loadModuleInfo(projectDir, importPath string) (pkgName, sourcePath string, stdPkg bool, err error) {
-	if len(importPath) >= 2 && importPath[0] == '"' && importPath[len(importPath)-1] == '"' {
-		importPath = importPath[1 : len(importPath)-1]
-	}
-	config := packages.Config{
-		Mode: packages.NeedName + packages.NeedFiles,
-		Dir:  projectDir,
-	}
-	pkgs, err := packages.Load(&config, importPath)
-	if err != nil {
-		return "", "", false, err
-	}
-	if len(pkgs) == 0 {
-		return "", "", false, fmt.Errorf("could not load importPath %q for projectDir %q", importPath, projectDir)
-	}
-	pkgName = pkgs[0].Name
-	sourcePath = filepath.Dir(pkgs[0].GoFiles[0])
-	stdPkg = strings.HasPrefix(sourcePath, build.Default.GOROOT)
-	return pkgName, sourcePath, stdPkg, nil
-}
-
-func importInfo(projectDir, importLine string) (importName, pkgName, sourcePath string, stdPkg bool, err error) {
-	importLine = strings.TrimPrefix(importLine, "import")
-	begQuote := strings.IndexByte(importLine, '"')
-	endQuote := strings.LastIndexByte(importLine, '"')
-	if begQuote == -1 || begQuote == endQuote {
-		return "", "", "", false, fmt.Errorf("invalid quoted import: %s", importLine)
-	}
-	importPath := importLine[begQuote+1 : endQuote]
-	importName = strings.TrimSpace(importLine[:begQuote])
-
-	pkgName, sourcePath, stdPkg, err = loadModuleInfo(projectDir, importPath)
-	if err != nil {
-		return "", "", "", false, err
-	}
-	if importName == "" {
-		importName = pkgName
-	}
-	return importName, pkgName, sourcePath, stdPkg, nil
-}
