@@ -81,6 +81,13 @@ func filterGoFiles(excludeFilenames ...string) func(info os.FileInfo) bool {
 	}
 }
 
+func filterOutTests(info os.FileInfo) bool {
+	if strings.HasSuffix(info.Name(), "_test.go") {
+		return false
+	}
+	return true
+}
+
 // func parsePackage2(pkgDir, genFilename string, onlyFuncs ...string) (pkgName string, funcs map[*ast.FuncDecl]*ast.File, err error) {
 // 	config := &packages.Config{
 // 		Mode: packages.NeedName + packages.NeedImports + packages.NeedTypes + packages.NeedSyntax + packages.NeedTypesInfo,

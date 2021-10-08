@@ -3,43 +3,60 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/ungerik/go-command/cmd/gen-cmd-funcs/gen"
 )
 
 var (
-	genFilename  string
-	namePrefix   string
-	replaceTODOs bool
-	printOnly    bool
+	// genFilename   string
+	// namePrefix    string
+	// exportedFuncs bool
+	printOnly bool
+	printHelp bool
 )
 
 func main() {
-	flag.StringVar(&genFilename, "gen", "generated.go", "name of the file to be generated")
-	flag.StringVar(&namePrefix, "prefix", "Func", "prefix for function type names in the same package")
-	flag.BoolVar(&replaceTODOs, "todo", false, "replaces command.GenerateFunctionTODO with generated types")
+	// flag.BoolVar(&exportedFuncs, "exported", false, "generate command.Function implementation types exported package functions")
+	// flag.StringVar(&genFilename, "genfile", "generated.go", "name of the file to be generated")
+	// flag.StringVar(&namePrefix, "prefix", "Func", "prefix for function type names in the same package")
 	flag.BoolVar(&printOnly, "print", false, "prints to stdout instead of writing files")
+	flag.BoolVar(&printHelp, "help", false, "prints this help output")
 	flag.Parse()
-	args := flag.Args()
-	if len(args) < 1 {
-		fmt.Fprintln(os.Stderr, "gen-cmd-funcs needs package path argument")
-		os.Exit(1)
+	if printHelp {
+		flag.PrintDefaults()
+		return
 	}
 
-	if replaceTODOs {
-		filePath := args[0]
-		err := gen.RewriteGenerateFunctionTODOs(filePath, printOnly)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "gen-cmd-funcs error:", err)
-			os.Exit(1)
-		}
-	} else {
-		pkgDir, onlyFuncs := args[0], args[1:]
-		err := gen.PackageFunctions(pkgDir, genFilename, namePrefix, printOnly, onlyFuncs...)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, "gen-cmd-funcs error:", err)
-			os.Exit(1)
-		}
+	args := flag.Args()
+
+	// if exportedFuncs {
+	// 	if len(args) < 1 {
+	// 		fmt.Fprintln(os.Stderr, "gen-cmd-funcs needs package path argument")
+	// 		os.Exit(1)
+	// 	}
+	// 	pkgDir, onlyFuncs := filepath.Clean(args[0]), args[1:]
+	// 	err := gen.PackageFunctions(pkgDir, genFilename, namePrefix, printOnly, onlyFuncs...)
+	// 	if err != nil {
+	// 		fmt.Fprintln(os.Stderr, "gen-cmd-funcs error:", err)
+	// 		os.Exit(2)
+	// 	}
+	// 	return
+	// }
+
+	filePath, _ := os.Getwd()
+	if len(args) > 0 && args[0] != "." {
+		filePath = filepath.Clean(args[0])
+	}
+	var printOnlyWriter io.Writer
+	if printOnly {
+		printOnlyWriter = os.Stdout
+	}
+	err := gen.Rewrite(filePath, printOnlyWriter)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "gen-cmd-funcs error:", err)
+		os.Exit(2)
 	}
 }
