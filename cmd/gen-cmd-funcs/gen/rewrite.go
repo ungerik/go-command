@@ -4,13 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/token"
 	"io"
 	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/ungerik/go-astvisit"
@@ -143,7 +143,7 @@ func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, f
 		Funcs: pkgFuncs,
 	}
 
-	var replacements []astvisit.NodeReplacement
+	var replacements astvisit.NodeReplacements
 	for _, impl := range funcImpls {
 		importName, funcName := impl.WrappedFuncPkgFuncName()
 		referencedPkg, ok := functions[importName]
@@ -165,26 +165,26 @@ func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, f
 			return err
 		}
 
-		var implReplacements []astvisit.NodeReplacement
-		for _, comment := range impl.Comments {
-			implReplacements = append(implReplacements, astvisit.NodeReplacement{Node: comment})
+		var implReplacements astvisit.NodeReplacements
+		for i, node := range impl.Nodes {
+			if i == 0 {
+				implReplacements.AddReplacement(node, repl.String())
+			} else {
+				implReplacements.AddRemoval(node)
+			}
 		}
-		for _, declIndex := range impl.DeclIndices {
-			decl := file.Decls[declIndex]
-			implReplacements = append(implReplacements, astvisit.NodeReplacement{Node: decl})
-		}
-		astvisit.SortNodeReplacements(implReplacements)
-		implReplacements[0].Replacement = repl.String()
-
-		replacements = append(replacements, implReplacements...)
+		replacements.Add(implReplacements)
 	}
 
 	source, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
-
-	rewritten, err := astvisit.ReplaceNodes(fset, source, replacements)
+	rewritten, err := replacements.Apply(fset, source)
+	if err != nil {
+		return err
+	}
+	source, err = format.Source(source)
 	if err != nil {
 		return err
 	}
@@ -203,8 +203,7 @@ type funcImpl struct {
 	VarName     string
 	WrappedFunc string
 	Type        string
-	DeclIndices []int
-	Comments    []*ast.CommentGroup
+	Nodes       []ast.Node
 }
 
 func (impl *funcImpl) WrappedFuncPkgFuncName() (pkgName, funcName string) {
@@ -220,7 +219,7 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 	named := make(map[string]*funcImpl)
 	typed := make(map[string]*funcImpl)
 
-	for i, decl := range file.Decls {
+	for _, decl := range file.Decls {
 		// ast.Print(fset, decl)
 		switch decl := decl.(type) {
 		case *ast.GenDecl:
@@ -254,9 +253,12 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 					}
 					impl.VarName = implVarName
 					impl.WrappedFunc = wrappedFunc
-					impl.DeclIndices = append(impl.DeclIndices, i)
 					impl.Type = astvisit.ExprString(valueSpec.Type)
-					impl.Comments = append(impl.Comments, decl.Doc)
+					if decl.Doc != nil {
+						impl.Nodes = append(impl.Nodes, decl.Doc)
+					}
+					impl.Nodes = append(impl.Nodes, decl)
+
 					typed[impl.Type] = impl
 					continue
 				}
@@ -276,10 +278,10 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 				}
 				impl.VarName = implVarName
 				impl.WrappedFunc = astvisit.ExprString(callExpr.Args[0])
-				impl.DeclIndices = append(impl.DeclIndices, i)
 				if decl.Doc != nil {
-					impl.Comments = append(impl.Comments, decl.Doc)
+					impl.Nodes = append(impl.Nodes, decl.Doc)
 				}
+				impl.Nodes = append(impl.Nodes, decl)
 
 			case token.TYPE:
 				// ast.Print(fset, decl)
@@ -311,8 +313,10 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 					impl.VarName = implTypeName
 				}
 				impl.WrappedFunc = wrappedFunc
-				impl.DeclIndices = append(impl.DeclIndices, i)
-				impl.Comments = append(impl.Comments, decl.Doc)
+				if decl.Doc != nil {
+					impl.Nodes = append(impl.Nodes, decl.Doc)
+				}
+				impl.Nodes = append(impl.Nodes, decl)
 			}
 
 		case *ast.FuncDecl:
@@ -324,16 +328,12 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 			if impl == nil {
 				continue
 			}
-			impl.DeclIndices = append(impl.DeclIndices, i)
 			if decl.Doc != nil {
-				impl.Comments = append(impl.Comments, decl.Doc)
+				impl.Nodes = append(impl.Nodes, decl.Doc)
 			}
+			impl.Nodes = append(impl.Nodes, decl)
 		}
 	}
 
-	for _, impl := range ordered {
-		sort.Ints(impl.DeclIndices)
-	}
-	sort.Slice(ordered, func(i, j int) bool { return ordered[i].DeclIndices[0] < ordered[j].DeclIndices[0] })
 	return ordered
 }
