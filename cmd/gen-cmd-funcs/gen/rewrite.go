@@ -18,7 +18,7 @@ import (
 	"github.com/ungerik/go-astvisit"
 )
 
-func Rewrite(path string, printOnly io.Writer) (err error) {
+func Rewrite(path string, verbose bool, printOnly io.Writer) (err error) {
 	recursive := strings.HasSuffix(path, "...")
 	if recursive {
 		path = strings.TrimSuffix(path, "...")
@@ -28,7 +28,7 @@ func Rewrite(path string, printOnly io.Writer) (err error) {
 		return err
 	}
 	if !fileInfo.IsDir() {
-		return RewriteFile(path, printOnly)
+		return RewriteFile(path, verbose, printOnly)
 	}
 
 	fset := token.NewFileSet()
@@ -40,7 +40,7 @@ func Rewrite(path string, printOnly io.Writer) (err error) {
 		return err
 	}
 	for fileName, file := range pkg.Files {
-		err = RewriteAstFile(fset, pkg, file, fileName, printOnly)
+		err = RewriteAstFile(fset, pkg, file, fileName, verbose, printOnly)
 		if err != nil {
 			return err
 		}
@@ -53,11 +53,11 @@ func Rewrite(path string, printOnly io.Writer) (err error) {
 		if !d.IsDir() {
 			return nil
 		}
-		return Rewrite(filepath.Join(path, d.Name())+"...", printOnly)
+		return Rewrite(filepath.Join(path, d.Name())+"...", verbose, printOnly)
 	})
 }
 
-func RewriteFile(filePath string, printOnly io.Writer) (err error) {
+func RewriteFile(filePath string, verbose bool, printOnly io.Writer) (err error) {
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		return err
@@ -71,10 +71,10 @@ func RewriteFile(filePath string, printOnly io.Writer) (err error) {
 	if err != nil {
 		return err
 	}
-	return RewriteAstFile(fset, pkg, pkg.Files[fileName], filePath, printOnly)
+	return RewriteAstFile(fset, pkg, pkg.Files[fileName], filePath, verbose, printOnly)
 }
 
-func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, filePath string, printOnly io.Writer) (err error) {
+func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, filePath string, verbose bool, printOnly io.Writer) (err error) {
 	// ast.Print(fset, file)
 
 	funcImpls := findFuncImpls(fset, file)
@@ -173,7 +173,7 @@ func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, f
 		var newSrc strings.Builder
 		// fmt.Fprintf(&newSrc, "////////////////////////////////////////\n")
 		// fmt.Fprintf(&newSrc, "// %s\n\n", impl.WrappedFunc)
-		// fmt.Fprintf(&newSrc, "// XXX %s wraps %s as command.Function (generated code)\n", impl.VarName, impl.WrappedFunc)
+		fmt.Fprintf(&newSrc, "// XXX %s wraps %s as command.Function (generated code)\n", impl.VarName, impl.WrappedFunc)
 		fmt.Fprintf(&newSrc, "var %[1]s %[1]sT\n\n", impl.VarName)
 		err = WriteFunctionImpl(&newSrc, file, wrappedFunc.Decl, impl.VarName+"T", importName)
 		if err != nil {
@@ -186,14 +186,14 @@ func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, f
 		// Insert rewritten declarations at position of first old declaration
 		insertIndex := impl.DeclIndices[0]
 		file.Decls = append(file.Decls[:insertIndex], append(newDecls, file.Decls[:insertIndex]...)...)
-		// file.Comments = append(file.Comments, newComments...)
+		file.Comments = append(file.Comments, newComments...)
 		var _ = newDecls
 		var _ = newComments
 	}
 
 	buf := bytes.NewBuffer(nil)
 	const printerNormalizeNumbers = 1 << 30
-	config := printer.Config{Mode: printer.UseSpaces | printer.TabIndent | printerNormalizeNumbers, Tabwidth: 8}
+	config := printer.Config{Mode: printer.UseSpaces | printer.TabIndent | printerNormalizeNumbers | printer.SourcePos, Tabwidth: 8}
 	err = config.Fprint(buf, fset, file)
 	// err = format.Node(buf, fset, file)
 	if err != nil {
