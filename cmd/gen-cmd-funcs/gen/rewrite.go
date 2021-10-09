@@ -1,11 +1,9 @@
 package gen
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"go/ast"
-	"go/printer"
 	"go/token"
 	"io"
 	"io/fs"
@@ -74,12 +72,15 @@ func RewriteFile(filePath string, verbose bool, printOnly io.Writer) (err error)
 	return RewriteAstFile(fset, pkg, pkg.Files[fileName], filePath, verbose, printOnly)
 }
 
-func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, filePath string, verbose bool, printOnly io.Writer) (err error) {
+func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, filePath string, verbose bool, printTo io.Writer) (err error) {
 	// ast.Print(fset, file)
 
 	funcImpls := findFuncImpls(fset, file)
 	if len(funcImpls) == 0 {
-		return nil // nothing to rewrite
+		if verbose {
+			fmt.Println("nothing found to rewrite in", filePath)
+		}
+		return nil
 	}
 
 	fileDir := filepath.Dir(filePath)
@@ -142,24 +143,8 @@ func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, f
 		Funcs: pkgFuncs,
 	}
 
-	// Modify file.Decls
-	for i := len(funcImpls) - 1; i >= 0; i-- {
-		impl := funcImpls[i]
-
-		// Remove previous declarations
-		for j := len(impl.DeclIndices) - 1; j >= 0; j-- {
-			declIndex := impl.DeclIndices[j]
-			file.Decls = append(file.Decls[:declIndex], file.Decls[declIndex+1:]...)
-		}
-		// Remove previous comments
-		for _, comment := range impl.Comments {
-			for j := len(file.Comments) - 1; j >= 0; j-- {
-				if file.Comments[j] == comment {
-					file.Comments = append(file.Comments[:j], file.Comments[j+1:]...)
-				}
-			}
-		}
-
+	var replacements []astvisit.NodeReplacement
+	for _, impl := range funcImpls {
 		importName, funcName := impl.WrappedFuncPkgFuncName()
 		referencedPkg, ok := functions[importName]
 		if !ok {
@@ -170,41 +155,48 @@ func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, f
 			return fmt.Errorf("can't find function %s in package %s", funcName, importName)
 		}
 
-		var newSrc strings.Builder
+		var repl strings.Builder
 		// fmt.Fprintf(&newSrc, "////////////////////////////////////////\n")
 		// fmt.Fprintf(&newSrc, "// %s\n\n", impl.WrappedFunc)
-		fmt.Fprintf(&newSrc, "// XXX %s wraps %s as command.Function (generated code)\n", impl.VarName, impl.WrappedFunc)
-		fmt.Fprintf(&newSrc, "var %[1]s %[1]sT\n\n", impl.VarName)
-		err = WriteFunctionImpl(&newSrc, file, wrappedFunc.Decl, impl.VarName+"T", importName)
+		fmt.Fprintf(&repl, "// %s wraps %s as command.Function (generated code)\n", impl.VarName, impl.WrappedFunc)
+		fmt.Fprintf(&repl, "var %[1]s %[1]sT\n\n", impl.VarName)
+		err = WriteFunctionImpl(&repl, file, wrappedFunc.Decl, impl.VarName+"T", importName)
 		if err != nil {
 			return err
 		}
-		newDecls, newComments, err := astvisit.ParseDeclarations(fset, newSrc.String())
-		if err != nil {
-			return err
+
+		var implReplacements []astvisit.NodeReplacement
+		for _, comment := range impl.Comments {
+			implReplacements = append(implReplacements, astvisit.NodeReplacement{Node: comment})
 		}
-		// Insert rewritten declarations at position of first old declaration
-		insertIndex := impl.DeclIndices[0]
-		file.Decls = append(file.Decls[:insertIndex], append(newDecls, file.Decls[:insertIndex]...)...)
-		file.Comments = append(file.Comments, newComments...)
-		var _ = newDecls
-		var _ = newComments
+		for _, declIndex := range impl.DeclIndices {
+			decl := file.Decls[declIndex]
+			implReplacements = append(implReplacements, astvisit.NodeReplacement{Node: decl})
+		}
+		astvisit.SortNodeReplacements(implReplacements)
+		implReplacements[0].Replacement = repl.String()
+
+		replacements = append(replacements, implReplacements...)
 	}
 
-	buf := bytes.NewBuffer(nil)
-	const printerNormalizeNumbers = 1 << 30
-	config := printer.Config{Mode: printer.UseSpaces | printer.TabIndent | printerNormalizeNumbers | printer.SourcePos, Tabwidth: 8}
-	err = config.Fprint(buf, fset, file)
-	// err = format.Node(buf, fset, file)
+	source, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
-	if printOnly != nil {
-		_, err = printOnly.Write(buf.Bytes())
+
+	rewritten, err := astvisit.ReplaceNodes(fset, source, replacements)
+	if err != nil {
 		return err
 	}
-	fmt.Println("Writing file", filePath)
-	return ioutil.WriteFile(filePath, buf.Bytes(), 0660)
+
+	if printTo != nil {
+		_, err = printTo.Write(rewritten)
+		return err
+	}
+	if verbose {
+		fmt.Println("rewriting", filePath)
+	}
+	return ioutil.WriteFile(filePath, rewritten, 0660)
 }
 
 type funcImpl struct {

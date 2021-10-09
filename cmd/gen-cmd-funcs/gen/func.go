@@ -196,7 +196,7 @@ func WriteFunctionImpl(w io.Writer, file *ast.File, funcDecl *ast.FuncDecl, impl
 		}
 		writeFuncCall(argNames)
 	}
-	fmt.Fprintf(w, "}\n\n")
+	fmt.Fprintf(w, "}\n")
 
 	return nil
 }
