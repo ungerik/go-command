@@ -45,7 +45,7 @@ func PackageFunctions(pkgDir, genFilename, namePrefix string, printOnly bool, on
 	}
 
 	for funName, fun := range funcs {
-		err = WriteFunctionImpl(b, fun.File, fun.Decl, namePrefix+funName, "")
+		err = ImplWrapper.WriteFunction(b, fun.File, fun.Decl, namePrefix+funName, "")
 		if err != nil {
 			return err
 		}

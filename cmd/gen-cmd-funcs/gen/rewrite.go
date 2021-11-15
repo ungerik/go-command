@@ -63,13 +63,12 @@ func RewriteFile(filePath string, verbose bool, printOnly io.Writer) (err error)
 	if fileInfo.IsDir() {
 		return fmt.Errorf("file path is a directory: %s", filePath)
 	}
-	fileDir, fileName := filepath.Split(filePath)
 	fset := token.NewFileSet()
-	pkg, err := astvisit.ParsePackage(fset, fileDir, filterOutTests)
+	pkg, err := astvisit.ParsePackage(fset, filepath.Dir(filePath), filterOutTests)
 	if err != nil {
 		return err
 	}
-	return RewriteAstFile(fset, pkg, pkg.Files[fileName], filePath, verbose, printOnly)
+	return RewriteAstFile(fset, pkg, pkg.Files[filePath], filePath, verbose, printOnly)
 }
 
 func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, filePath string, verbose bool, printTo io.Writer) (err error) {
@@ -145,7 +144,7 @@ func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, f
 
 	var replacements astvisit.NodeReplacements
 	for _, impl := range funcImpls {
-		importName, funcName := impl.WrappedFuncPkgFuncName()
+		importName, funcName := impl.WrappedFuncPkgAndFuncName()
 		referencedPkg, ok := functions[importName]
 		if !ok {
 			return fmt.Errorf("can't find package %s in imports of file %s", importName, filePath)
@@ -158,9 +157,9 @@ func RewriteAstFile(fset *token.FileSet, filePkg *ast.Package, file *ast.File, f
 		var repl strings.Builder
 		// fmt.Fprintf(&newSrc, "////////////////////////////////////////\n")
 		// fmt.Fprintf(&newSrc, "// %s\n\n", impl.WrappedFunc)
-		fmt.Fprintf(&repl, "// %s wraps %s as command.Function (generated code)\n", impl.VarName, impl.WrappedFunc)
+		fmt.Fprintf(&repl, "// %s wraps %s as %s (generated code)\n", impl.VarName, impl.WrappedFunc, impl.Implements)
 		fmt.Fprintf(&repl, "var %[1]s %[1]sT\n\n", impl.VarName)
-		err = WriteFunctionImpl(&repl, file, wrappedFunc.Decl, impl.VarName+"T", importName)
+		err = impl.Implements.WriteFunction(&repl, file, wrappedFunc.Decl, impl.VarName+"T", importName)
 		if err != nil {
 			return err
 		}
@@ -204,9 +203,10 @@ type funcImpl struct {
 	WrappedFunc string
 	Type        string
 	Nodes       []ast.Node
+	Implements  Impl
 }
 
-func (impl *funcImpl) WrappedFuncPkgFuncName() (pkgName, funcName string) {
+func (impl *funcImpl) WrappedFuncPkgAndFuncName() (pkgName, funcName string) {
 	dot := strings.IndexByte(impl.WrappedFunc, '.')
 	if dot == -1 {
 		return "", impl.WrappedFunc
@@ -236,15 +236,12 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 
 				if len(valueSpec.Values) == 0 {
 					// Example:
-					//   // documentCanUserRead wraps document.CanUserRead as command.Function
+					//   // documentCanUserRead wraps document.CanUserRead as function.Wrapper (generated code)
 					//   var documentCanUserRead documentCanUserReadT
-					comment := strings.TrimSpace(decl.Doc.Text())
-					prefix := implVarName + " wraps "
-					suffix := " as command.Function"
-					if !strings.HasPrefix(comment, prefix) || !strings.HasSuffix(comment, suffix) {
+					wrappedFunc, implements, err := parseImplementsComment(implVarName, decl.Doc.Text())
+					if err != nil {
 						continue
 					}
-					wrappedFunc := comment[len(prefix) : len(comment)-len(suffix)]
 					impl := named[implVarName]
 					if impl == nil {
 						impl = new(funcImpl)
@@ -253,6 +250,7 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 					}
 					impl.VarName = implVarName
 					impl.WrappedFunc = wrappedFunc
+					impl.Implements |= implements
 					impl.Type = astvisit.ExprString(valueSpec.Type)
 					if decl.Doc != nil {
 						impl.Nodes = append(impl.Nodes, decl.Doc)
@@ -267,7 +265,15 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 					continue
 				}
 				callExpr, ok := valueSpec.Values[0].(*ast.CallExpr)
-				if !ok || len(callExpr.Args) != 1 || astvisit.ExprString(callExpr.Fun) != "command.GenerateFunctionTODO" {
+				if !ok || len(callExpr.Args) != 1 {
+					continue
+				}
+				todoFunc := astvisit.ExprString(callExpr.Fun)
+				if !strings.HasSuffix(todoFunc, "TODO") {
+					continue
+				}
+				implements, err := ImplFromString(strings.TrimSuffix(todoFunc, "TODO"))
+				if err != nil {
 					continue
 				}
 				impl := named[implVarName]
@@ -278,6 +284,7 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 				}
 				impl.VarName = implVarName
 				impl.WrappedFunc = astvisit.ExprString(callExpr.Args[0])
+				impl.Implements |= implements
 				if decl.Doc != nil {
 					impl.Nodes = append(impl.Nodes, decl.Doc)
 				}
@@ -291,15 +298,12 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 				}
 				implTypeName := typeSpec.Name.Name
 				// Example:
-				//   // documentCanUserReadT wraps document.CanUserRead as command.Function
+				//   // documentCanUserReadT wraps document.CanUserRead as function.Wrapper (generated code)
 				//   type documentCanUserReadT struct{}
-				comment := strings.TrimSpace(decl.Doc.Text())
-				prefix := implTypeName + " wraps "
-				suffix := " as command.Function"
-				if !strings.HasPrefix(comment, prefix) || !strings.HasSuffix(comment, suffix) {
+				wrappedFunc, implements, err := parseImplementsComment(implTypeName, decl.Doc.Text())
+				if err != nil {
 					continue
 				}
-				wrappedFunc := comment[len(prefix) : len(comment)-len(suffix)]
 				impl := typed[implTypeName]
 				if impl == nil {
 					impl = new(funcImpl)
@@ -313,6 +317,7 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 					impl.VarName = implTypeName
 				}
 				impl.WrappedFunc = wrappedFunc
+				impl.Implements |= implements
 				if decl.Doc != nil {
 					impl.Nodes = append(impl.Nodes, decl.Doc)
 				}
@@ -336,4 +341,28 @@ func findFuncImpls(fset *token.FileSet, file *ast.File) []*funcImpl {
 	}
 
 	return ordered
+}
+
+// parseImplementsComment parses a comment that indicates the wrapped function
+// and what interface is implemented
+//
+// Example:
+//   // documentCanUserRead wraps document.CanUserRead as function.Wrapper (generated code)
+//   var documentCanUserRead documentCanUserReadT
+// or:
+//   // documentCanUserReadT wraps document.CanUserRead as function.Wrapper (generated code)
+//   type documentCanUserReadT struct{}
+func parseImplementsComment(implementor, comment string) (wrappedFunc string, implements Impl, err error) {
+	comment = strings.TrimSuffix(strings.TrimSpace(comment), " (generated code)")
+	prefix := implementor + " wraps "
+	asPos := strings.Index(comment, " as ")
+	if !strings.HasPrefix(comment, prefix) || asPos <= len(prefix) {
+		return "", 0, errors.New("no implementation comment")
+	}
+	wrappedFunc = comment[len(prefix):asPos]
+	implements, err = ImplFromString(comment[asPos+len(" as "):])
+	if err != nil {
+		return "", 0, err
+	}
+	return wrappedFunc, implements, nil
 }

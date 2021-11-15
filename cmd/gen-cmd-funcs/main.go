@@ -20,7 +20,7 @@ var (
 )
 
 func main() {
-	// flag.BoolVar(&exportedFuncs, "exported", false, "generate command.Function implementation types exported package functions")
+	// flag.BoolVar(&exportedFuncs, "exported", false, "generate function.Wrapper implementation types exported package functions")
 	// flag.StringVar(&genFilename, "genfile", "generated.go", "name of the file to be generated")
 	// flag.StringVar(&namePrefix, "prefix", "Func", "prefix for function type names in the same package")
 	flag.BoolVar(&verbose, "verbose", false, "prints information of what's happening")
@@ -29,7 +29,7 @@ func main() {
 	flag.Parse()
 	if printHelp {
 		flag.PrintDefaults()
-		return
+		os.Exit(2)
 	}
 
 	args := flag.Args()
