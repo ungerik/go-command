@@ -45,8 +45,8 @@ var RespondJSON ResultsWriterFunc = func(args command.Args, vars map[string]stri
 		buf = append(buf, b...)
 	}
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-	writer.Write(buf)
-	return nil
+	_, err := writer.Write(buf)
+	return err
 }
 
 // RespondBinary responds with contentType using the binary data from results of type []byte, string, or io.Reader.
@@ -72,8 +72,8 @@ func RespondBinary(contentType string) ResultsWriterFunc {
 			}
 		}
 		writer.Header().Set("Content-Type", contentType)
-		writer.Write(buf.Bytes())
-		return nil
+		_, err = writer.Write(buf.Bytes())
+		return err
 	}
 }
 
@@ -92,8 +92,8 @@ func RespondJSONField(fieldName string) ResultsWriterFunc {
 			return err
 		}
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-		writer.Write(buf)
-		return nil
+		_, err = writer.Write(buf)
+		return err
 	}
 }
 
@@ -117,8 +117,8 @@ var RespondXML ResultsWriterFunc = func(args command.Args, vars map[string]strin
 		buf = append(buf, b...)
 	}
 	writer.Header().Set("Content-Type", "application/xml; charset=utf-8")
-	writer.Write(buf)
-	return nil
+	_, err := writer.Write(buf)
+	return err
 }
 
 var RespondPlaintext ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
@@ -135,8 +135,8 @@ var RespondPlaintext ResultsWriterFunc = func(args command.Args, vars map[string
 		}
 	}
 	writer.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	writer.Write(buf.Bytes())
-	return nil
+	_, err := writer.Write(buf.Bytes())
+	return err
 }
 
 var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
@@ -153,8 +153,8 @@ var RespondHTML ResultsWriterFunc = func(args command.Args, vars map[string]stri
 		}
 	}
 	writer.Header().Add("Content-Type", "text/html; charset=utf-8")
-	writer.Write(buf.Bytes())
-	return nil
+	_, err := writer.Write(buf.Bytes())
+	return err
 }
 
 var RespondDetectContentType ResultsWriterFunc = func(args command.Args, vars map[string]string, resultVals []reflect.Value, resultErr error, writer http.ResponseWriter, request *http.Request) error {
@@ -170,8 +170,8 @@ var RespondDetectContentType ResultsWriterFunc = func(args command.Args, vars ma
 	}
 
 	writer.Header().Add("Content-Type", DetectContentType(data))
-	writer.Write(data)
-	return nil
+	_, err := writer.Write(data)
+	return err
 }
 
 func RespondContentType(contentType string) ResultsWriter {
@@ -188,8 +188,8 @@ func RespondContentType(contentType string) ResultsWriter {
 		}
 
 		writer.Header().Add("Content-Type", contentType)
-		writer.Write(data)
-		return nil
+		_, err := writer.Write(data)
+		return err
 	})
 }
 
